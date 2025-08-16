@@ -27,6 +27,48 @@ An AI-powered web application to create, customize, and generate professional-qu
 7.  **Generate Full Pack**: Once you're happy with the preview card, click "Generate Full Pack". The application will generate 3 more unique cards that match your theme and style.
 8.  **Download Your Cards**: All generated cards from the pack will be displayed at the bottom, each with its own download button.
 
+## 🛠️ Getting Started
+
+### Prerequisites
+
+- Node.js and npm installed.
+- A Google Gemini API key.
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-username/AI-Top-Trumps-Card-Generator.git
+   cd AI-Top-Trumps-Card-Generator
+   ```
+
+2. **Install frontend dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Install backend dependencies:**
+   ```bash
+   cd server
+   npm install
+   cd ..
+   ```
+
+4. **Set up your environment variables:**
+   - Create a new file named `.env` in the `server` directory.
+   - Add your Gemini API key to the `.env` file as follows:
+     ```
+     GEMINI_API_KEY=your_api_key_here
+     ```
+
+### Running the Application
+
+- **Start both the frontend and backend servers concurrently:**
+  ```bash
+  npm run dev
+  ```
+- The frontend will be available at `http://localhost:8088` and the backend at `http://localhost:3001`.
+
 ## 🛠️ Tech Stack
 
 -   **Frontend**: React, TypeScript, Tailwind CSS
