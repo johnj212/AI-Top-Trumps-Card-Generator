@@ -1,12 +1,12 @@
 // Main CardPreview component
-const CardPreview: React.FC<CardPreviewProps> = ({ cardData, colorScheme, isImageLoading = false, cardRef }) => {
+const CardPreview: React.FC<CardPreviewProps> = ({ cardData, colorScheme, isImageLoading = false }) => {
   // Destructure cardData
   const { title, image, stats, series, cardNumber, totalCards, rarity } = cardData;
   // Responsive font size for title
   const titleFontSizeClass = title.length > 18 ? 'text-lg' : 'text-2xl';
 
   return (
-    <div ref={cardRef} className={`w-full max-w-sm aspect-[62/100] rounded-2xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${colorScheme.background} border-4 ${colorScheme.accent}`} style={{fontFamily: "'Teko', sans-serif"}}>
+    <div className={`relative w-full max-w-sm aspect-[62/100] rounded-2xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${colorScheme.background} border-4 ${colorScheme.accent}`} style={{fontFamily: "'Teko', sans-serif"}}>
       {/* Solid Series Header Bar */}
       <div className={`w-full ${colorScheme.primary} px-4 py-2 flex justify-between items-center`}>
         <h2 className={`text-2xl font-bold uppercase tracking-wider text-shadow-lg whitespace-nowrap truncate pr-2`}>{series}</h2>
@@ -73,7 +73,6 @@ interface CardPreviewProps {
   cardData: CardData;
   colorScheme: ColorScheme;
   isImageLoading?: boolean;
-  cardRef?: React.RefObject<HTMLDivElement>;
 }
 
 const StatBar: React.FC<{ value: number, color: string }> = ({ value, color }) => {

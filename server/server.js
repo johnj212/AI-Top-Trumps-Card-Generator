@@ -43,7 +43,7 @@ app.post('/api/generate', async (req, res) => {
         config: {
           numberOfImages: 1,
           outputMimeType: 'image/jpeg',
-          aspectRatio: '9:16',
+          aspectRatio: '1:1',
         },
       });
       if (!imageResult.generatedImages || imageResult.generatedImages.length === 0) {
@@ -74,14 +74,38 @@ app.post('/api/generate', async (req, res) => {
       }
       let parsed;
       try {
+        // Check if we have the expected structure
+        if (!result.candidates[0] || !result.candidates[0].content || !result.candidates[0].content.parts || !result.candidates[0].content.parts[0]) {
+          console.error('Unexpected response structure:', JSON.stringify(result, null, 2));
+          return res.status(500).send({ error: 'Unexpected response structure from Gemini' });
+        }
+        
         // Clean and parse the text as JSON
         let rawText = result.candidates[0].content.parts[0].text;
+        console.log('Raw text from Gemini:', rawText);
+        
+        if (!rawText || typeof rawText !== 'string') {
+          console.error('No text content in response');
+          return res.status(500).send({ error: 'No text content in Gemini response' });
+        }
+        
         rawText = rawText.replace(/^(```)?json\n/, '').replace(/```$/, '').trim();
+        console.log('Cleaned text for parsing:', rawText);
         parsed = JSON.parse(rawText);
       } catch (e) {
-        console.error('Failed to parse Gemini content as JSON:', e, 'Raw text:', result.candidates[0].content.parts[0].text);
-        return res.status(500).send({ error: 'Failed to parse Gemini content as JSON', raw: result.candidates[0].content.parts[0].text });
+        console.error('Failed to parse Gemini content as JSON:', e);
+        const rawText = result.candidates[0]?.content?.parts?.[0]?.text || 'No text found';
+        console.error('Raw text was:', rawText);
+        
+        // Send back the raw text so we can see what Gemini returned
+        console.log('Sending error response with raw text');
+        return res.status(500).json({ 
+          error: 'Failed to parse Gemini content as JSON', 
+          raw: rawText,
+          errorMessage: e.message 
+        });
       }
+      console.log('Sending response:', { kind: "json", data: parsed });
       res.type('application/json').send({ kind: "json", data: parsed });
     }
   } catch (error) {

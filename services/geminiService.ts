@@ -18,7 +18,7 @@ if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' &&
 
 async function callApi(prompt: string, modelName: string) {
   const MAX_ATTEMPTS = 3;
-  const TIMEOUT_MS = 10000; // configurable timeout (10s)
+  const TIMEOUT_MS = 30000; // configurable timeout (30s)
   const BACKOFF_MS = 1000; // initial backoff (1s)
 
   let lastError: any = null;
@@ -77,7 +77,13 @@ async function callApi(prompt: string, modelName: string) {
 
 export async function generateStatsForTheme(theme: string): Promise<Statistic[]> {
   try {
-    const prompt = `Based on the theme "${theme}", generate exactly 6 thematically appropriate statistic names for a Top Trumps style trading card game. Return ONLY the names as a JSON array of strings, with no additional text or formatting. Examples for 'Dinosaurs' could be 'Height', 'Weight', 'Deadliness', 'Speed'.`;
+    const prompt = `Based on the theme "${theme}", generate exactly 6 thematically appropriate statistic names for a Top Trumps style trading card game. 
+
+IMPORTANT: You must respond with valid JSON only. Return a JSON array of exactly 6 strings with this structure:
+["Stat Name 1", "Stat Name 2", "Stat Name 3", "Stat Name 4", "Stat Name 5", "Stat Name 6"]
+
+Examples for 'Dinosaurs' could be ["Height", "Weight", "Deadliness", "Speed", "Agility", "Ferocity"].
+Do not include any text before or after the JSON array.`;
     const jsonText = await callApi(prompt, "gemini-2.5-flash");
     let stats: any;
     try {
@@ -126,7 +132,26 @@ export async function generateCardIdeas(seriesName: string, theme: string, image
   const statNames = stats.map(s => s.name).join(', ');
   const exclusionClause = excludeTitle ? ` that are different from "${excludeTitle}"` : '';
   const pluralClause = count > 1 ? 's' : '';
-  const prompt = `You are a creative assistant for a Top Trumps card game. The game's series is called "${seriesName}". Based on the theme of "${theme}", generate ${count} unique and creative card concept${pluralClause}${exclusionClause}. For each card, provide a compelling title and assign balanced, thematic values between 1 and 100 for the following statistics: ${statNames}. The values should be plausible for the card's title. Also, create a detailed, visually rich prompt for an AI image generator to create an image for this card in a "${imageStyle.name}" style. Crucially, the image must feature ONLY the single subject from the card's title, isolated or in a simple environment, without other creatures or characters. The prompt should be creative and describe a dynamic scene focusing on that single subject. Return ONLY the JSON object(s), with no additional text or formatting.`;
+  const prompt = `You are a creative assistant for a Top Trumps card game. The game's series is called "${seriesName}". Based on the theme of "${theme}", generate ${count} unique and creative card concept${pluralClause}${exclusionClause}. For each card, provide a compelling title and assign balanced, thematic values between 1 and 100 for the following statistics: ${statNames}. The values should be plausible for the card's title. Also, create a detailed, visually rich prompt for an AI image generator to create an image for this card in a "${imageStyle.name}" style. Crucially, the image must feature ONLY the single subject from the card's title, isolated or in a simple environment, without other creatures or characters. The prompt should be creative and describe a dynamic scene focusing on that single subject. 
+
+Return ONLY valid JSON with no additional text. Use this exact format:
+${count === 1 ? `{
+  "title": "Card Title",
+  "stats": {
+    "${statNames.split(', ')[0]}": 85,
+    "${statNames.split(', ')[1]}": 72
+  },
+  "imagePrompt": "Detailed image description..."
+}` : `[
+  {
+    "title": "Card Title 1", 
+    "stats": {
+      "${statNames.split(', ')[0]}": 85,
+      "${statNames.split(', ')[1]}": 72
+    },
+    "imagePrompt": "Detailed image description..."
+  }
+]`}`;
 
   try {
     const jsonText = await callApi(prompt, "gemini-2.5-flash");
@@ -196,7 +221,7 @@ export async function generateCardIdeas(seriesName: string, theme: string, image
         }
 
         // Validate and default imagePrompt
-        const imagePrompt = concept.image_prompt || concept.ai_image_prompt || '';
+        const imagePrompt = concept.imagePrompt || concept.image_prompt || concept.ai_image_prompt || '';
         if (typeof imagePrompt !== 'string') {
           console.warn('Skipping concept due to missing or invalid imagePrompt:', concept);
           return null;
@@ -241,9 +266,7 @@ export async function generateCardIdeas(seriesName: string, theme: string, image
 
 export async function generateImage(prompt: string): Promise<string> {
   try {
-    // Add aspect ratio specification to the prompt for 1:1 square images
-    const enhancedPrompt = `${prompt} --aspect-ratio 1:1 --format square`;
-    const responseText = await callApi(enhancedPrompt, 'imagen-3.0-generate-002');
+    const responseText = await callApi(prompt, 'imagen-3.0-generate-002');
     let responseObj;
     try {
       responseObj = JSON.parse(responseText);
