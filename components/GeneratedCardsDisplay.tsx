@@ -18,19 +18,47 @@ const GeneratedCardsDisplay: React.FC<GeneratedCardsDisplayProps> = ({ cards, co
       console.error("Card element not found for download.");
       return;
     }
-
     try {
-      // To ensure a high-resolution image while preserving the exact aspect ratio,
-      // we calculate a pixelRatio based on the card's rendered width.
-      // We aim for a target width of 732px (approx 300 DPI for a standard card).
-      const targetWidth = 732;
-      const sourceWidth = cardElement.offsetWidth;
-      const pixelRatio = targetWidth / sourceWidth;
+      // Wait for image and header to load (especially on mobile)
+      const img = cardElement.querySelector('img');
+      if (img && !img.complete) {
+        await new Promise(resolve => {
+          img.onload = () => resolve(true);
+          img.onerror = () => resolve(false);
+        });
+      }
+      // Wait for header to be visible
+      const header = cardElement.querySelector('h2');
+      if (header && header.offsetHeight === 0) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      // Short delay to ensure DOM is painted (especially on mobile)
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Use fixed pixel size and devicePixelRatio for download
+  // Ensure aspect ratio is always 1:1.61 (width:height)
+  const targetWidth = 732;
+  const targetHeight = Math.round(targetWidth * 1.61); // 1:1.61 aspect ratio
+      const pixelRatio = window.devicePixelRatio || 2;
+
+      // Force fixed size for download
+      cardElement.style.width = `${targetWidth}px`;
+      cardElement.style.height = `${targetHeight}px`;
 
       const dataUrl = await htmlToImage.toPng(cardElement, {
         quality: 1,
-        pixelRatio: pixelRatio,
+        width: targetWidth,
+        height: targetHeight,
+        pixelRatio,
+        style: {
+          width: `${targetWidth}px`,
+          height: `${targetHeight}px`,
+        },
       });
+
+      // Restore style
+      cardElement.style.width = '';
+      cardElement.style.height = '';
 
       const link = document.createElement('a');
       link.download = `${card.series}-${card.title.replace(/\s+/g, '_')}.png`;
@@ -41,10 +69,6 @@ const GeneratedCardsDisplay: React.FC<GeneratedCardsDisplayProps> = ({ cards, co
       alert('An error occurred while trying to generate the card image for download. Please check the console for details.');
     }
   };
-
-  if (cards.length === 0) {
-    return null;
-  }
 
   return (
     <div className="mt-12">
@@ -69,6 +93,5 @@ const GeneratedCardsDisplay: React.FC<GeneratedCardsDisplayProps> = ({ cards, co
       </div>
     </div>
   );
-};
-
+}
 export default GeneratedCardsDisplay;
