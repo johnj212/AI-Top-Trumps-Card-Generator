@@ -22,15 +22,24 @@ The application leverages the `@google/genai` SDK for two primary AI-driven task
 
 ### b. Generating Full Card Packs
 
--   **Purpose:** After the user finalizes the theme and style, this service generates the content for a pack of 4 unique cards.
+-   **Purpose:** After the user finalizes the theme and style, this service generates the content for a pack of unique cards.
 -   **Model:** `gemini-2.5-flash`
 -   **Configuration:**
     -   `responseMimeType`: "application/json"
-    -   `responseSchema`: An array of 4 card objects. Each object contains:
+    -   `responseSchema`: An array of card objects. Each object contains:
         -   `title`: string (e.g., "Armored Land Dragon")
         -   `stats`: An array of 6 statistic objects (`name`: string, `value`: integer from 1-100).
         -   `imagePrompt`: A detailed, visually rich string for the image generation model.
--   **Example Prompt:** "You are a creative assistant for a Top Trumps card game. The game's series is called 'Mythical Creatures'. Based on the theme of 'Fantasy', generate 4 unique and creative card concepts. For each card, provide a compelling title and assign balanced, thematic values between 1 and 100 for the statistics: 'Magic Power', 'Strength', 'Agility', 'Wisdom', 'Fear Factor', 'Defense'. The values should be plausible for the card's title. Also, create a detailed, visually rich prompt for an AI image generator to create an image for this card in a 'Holographic foil effect art' style."
+-   **Prompt Template:** The application constructs a detailed prompt dynamically based on user selections. The template is as follows:
+
+   `You are a creative assistant for a Top Trumps card game. The game's series is called "{SERIES_NAME}". Based on the theme of "{THEME}", generate {COUNT} unique and creative card concept(s){EXCLUSION_CLAUSE}. For each card, provide a compelling title and assign balanced, thematic values between 1 and 100 for the following statistics: {STAT_NAMES}. The values should be plausible for the card's title. Also, create a detailed, visually rich prompt for an AI image generator to create an image for this card in a "{IMAGE_STYLE}" style. Crucially, the image must feature ONLY the single subject from the card's title, isolated or in a simple environment, without other creatures or characters. The prompt should be creative and describe a dynamic scene focusing on that single subject.`
+
+   - `{SERIES_NAME}`: The name of the card series (e.g., "Dinosaurs").
+   - `{THEME}`: The selected theme (e.g., "Fantasy").
+   - `{COUNT}`: The number of cards to generate (1 for preview, 3 for the rest of the pack).
+   - `{EXCLUSION_CLAUSE}`: An optional clause to exclude a previously generated card title (e.g., `that are different from "T-Rex"`).
+   - `{STAT_NAMES}`: A comma-separated list of the 6 statistic names.
+   - `{IMAGE_STYLE}`: The name of the selected image style (e.g., "Holographic Foil Effect").
 
 ## 3. Image Generation (`imagen-3.0-generate-002`)
 
