@@ -1,53 +1,66 @@
 
-# Gemini API Project Reference: Top Trumps Card Generator
+# Gemini API Integration Reference (Locked Design)
 
-This document outlines the usage of the Google Gemini API for the Top Trumps Card Generator project.
+## Backend API Contract
 
-## 1. Core Services
+- All Gemini API calls are made from the backend (`server/server.js`).
+- The backend exposes a single endpoint: `/api/generate`.
+- Requests must include:
+    - `prompt`: The prompt string for Gemini.
+    - `modelName`: The Gemini model to use (`gemini-2.5-flash` for text/stats, `imagen-3.0-generate-002` for images).
 
-The application leverages the `@google/genai` SDK for two primary AI-driven tasks:
-1.  **Text Generation (`gemini-2.5-flash`):** Used for creating thematic content for the cards.
-2.  **Image Generation (`imagen-3.0-generate-002`):** Used for generating the main artwork for each card.
+## Response Shapes
 
-## 2. Text Generation (`gemini-2.5-flash`)
+### Stats Generation
+- **Request:**
+    - `modelName: 'gemini-2.5-flash'`
+    - `prompt`: As described in the codebase (see `generateStatsForTheme`).
+- **Backend Response:**
+    - `{ kind: 'json', data: ["Stat Name 1", "Stat Name 2", ...] }`
+- **Frontend Handling:**
+    - The frontend parses the response as JSON and uses `data` as the array of stat names.
 
-### a. Generating Thematic Statistics
+### Card Ideas Generation
+- **Request:**
+    - `modelName: 'gemini-2.5-flash'`
+    - `prompt`: As described in the codebase (see `generateCardIdeas`).
+- **Backend Response:**
+    - `{ kind: 'json', data: [ { title, stats, imagePrompt }, ... ] }`
+- **Frontend Handling:**
+    - The frontend parses the response as JSON and uses `data` as the array of card ideas.
 
--   **Purpose:** When a user selects a theme (e.g., "Dinosaurs"), the app calls Gemini to generate a list of 6 relevant statistics.
--   **Model:** `gemini-2.5-flash`
--   **Configuration:**
-    -   `responseMimeType`: "application/json"
-    -   `responseSchema`: An array of objects, where each object has a `name` (string) and a default `value` (integer).
--   **Example Prompt:** "Based on the theme 'Fantasy', generate exactly 6 thematically appropriate statistic names for a Top Trumps style trading card game. Examples for 'Dinosaurs' could be 'Height', 'Weight', 'Deadliness', 'Speed'."
+### Image Generation
+- **Request:**
+    - `modelName: 'imagen-3.0-generate-002'`
+    - `prompt`: The image prompt string.
+- **Backend Response:**
+    - `{ kind: 'image', mime: 'image/jpeg', data: '<base64>' }`
+- **Frontend Handling:**
+    - The frontend parses the response as JSON and uses `data` as the base64 image string.
 
-### b. Generating Full Card Packs
+## Error Handling
+- All parsing is done on the backend before sending to the client.
+- If parsing fails, backend returns a 500 error with the raw text for debugging.
+- Frontend expects the above shapes and logs errors if the expected fields are missing.
 
--   **Purpose:** After the user finalizes the theme and style, this service generates the content for a pack of unique cards.
--   **Model:** `gemini-2.5-flash`
--   **Configuration:**
-    -   `responseMimeType`: "application/json"
-    -   `responseSchema`: An array of card objects. Each object contains:
-        -   `title`: string (e.g., "Armored Land Dragon")
-        -   `stats`: An array of 6 statistic objects (`name`: string, `value`: integer from 1-100).
-        -   `imagePrompt`: A detailed, visually rich string for the image generation model.
--   **Prompt Template:** The application constructs a detailed prompt dynamically based on user selections. The template is as follows:
+## Design Lock
+- **Do not change the response shapes or contract without updating both backend and frontend.**
+- Always return `{ kind, data }` objects for all API responses.
+- All frontend code must check for `kind` and use `data` accordingly.
 
-   `You are a creative assistant for a Top Trumps card game. The game's series is called "{SERIES_NAME}". Based on the theme of "{THEME}", generate {COUNT} unique and creative card concept(s){EXCLUSION_CLAUSE}. For each card, provide a compelling title and assign balanced, thematic values between 1 and 100 for the following statistics: {STAT_NAMES}. The values should be plausible for the card's title. Also, create a detailed, visually rich prompt for an AI image generator to create an image for this card in a "{IMAGE_STYLE}" style. Crucially, the image must feature ONLY the single subject from the card's title, isolated or in a simple environment, without other creatures or characters. The prompt should be creative and describe a dynamic scene focusing on that single subject.`
+## Example Usage
 
-   - `{SERIES_NAME}`: The name of the card series (e.g., "Dinosaurs").
-   - `{THEME}`: The selected theme (e.g., "Fantasy").
-   - `{COUNT}`: The number of cards to generate (1 for preview, 3 for the rest of the pack).
-   - `{EXCLUSION_CLAUSE}`: An optional clause to exclude a previously generated card title (e.g., `that are different from "T-Rex"`).
-   - `{STAT_NAMES}`: A comma-separated list of the 6 statistic names.
-   - `{IMAGE_STYLE}`: The name of the selected image style (e.g., "Holographic Foil Effect").
+```js
+// Backend response for stats:
+{ kind: 'json', data: ["Top Speed", "Range", ...] }
 
-## 3. Image Generation (`imagen-3.0-generate-002`)
+// Backend response for card ideas:
+{ kind: 'json', data: [ { title, stats, imagePrompt }, ... ] }
 
--   **Purpose:** To create the main visual for each card based on the prompt generated in the previous step.
--   **Model:** `imagen-3.0-generate-002`
--   **Configuration:**
-    -   `numberOfImages`: 1
-    -   `outputMimeType`: 'image/jpeg' (or 'image/png')
-    -   `aspectRatio`: '9:16' to best fit the tall, portrait orientation of the card.
--   **Input:** The `imagePrompt` string generated by `gemini-2.5-flash`.
--   **Output:** A base64 encoded string of the generated image, which is then embedded into the card component using a data URI (`data:image/jpeg;base64,...`).
+// Backend response for image:
+{ kind: 'image', mime: 'image/jpeg', data: '<base64>' }
+```
+
+## Maintenance
+- If Gemini API changes, update backend parsing logic first, then update frontend contract.
+- Always test both stats and image generation after any change.
