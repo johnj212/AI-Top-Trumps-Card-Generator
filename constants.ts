@@ -33,7 +33,7 @@ export const DEFAULT_CARD_DATA: CardData = {
     id: 'preview-card',
     title: "T-Rex",
     series: "Dinosaurs",
-    image: `https://picsum.photos/seed/trex/732/976`,
+    image: `https://picsum.photos/seed/trex/732/732`,
     stats: [
         { name: "Height", value: 55 },
         { name: "Weight", value: 72 },
