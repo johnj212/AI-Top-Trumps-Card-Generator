@@ -135,11 +135,11 @@ function App() {
             const idea = otherCardIdeas[i];
             setLoadingMessage(`Generating image for ${idea.card_title}... (${i + 1}/${otherCardIdeas.length})`);
             
-            const imageBase64 = await generateImage(idea.image_prompt);
+            const imageBase64 = await generateImage(idea.imagePrompt);
             
             newCards.push({
                 id: `card-${Date.now()}-${i}`,
-                title: idea.card_title,
+                title: idea.title,
                 series: cardData.series,
                 image: `data:image/jpeg;base64,${imageBase64}`,
                 stats: idea.stats,
