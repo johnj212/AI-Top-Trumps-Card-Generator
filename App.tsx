@@ -177,7 +177,7 @@ function App() {
       )}
 
        <footer className="text-center text-gray-500 mt-12">
-        <p>Built by a world-class senior frontend React engineer.</p>
+        <p>Built with Love.</p>
       </footer>
     </div>
   );
