@@ -241,7 +241,9 @@ export async function generateCardIdeas(seriesName: string, theme: string, image
 
 export async function generateImage(prompt: string): Promise<string> {
   try {
-    const responseText = await callApi(prompt, 'imagen-3.0-generate-002');
+    // Add aspect ratio specification to the prompt for 1:1 square images
+    const enhancedPrompt = `${prompt} --aspect-ratio 1:1 --format square`;
+    const responseText = await callApi(enhancedPrompt, 'imagen-3.0-generate-002');
     let responseObj;
     try {
       responseObj = JSON.parse(responseText);

@@ -19,6 +19,7 @@ const getRandomRarity = (): Rarity => {
 };
 
 function App() {
+  const [isDownloading, setIsDownloading] = useState(false);
   const [cardData, setCardData] = useState<CardData>(DEFAULT_CARD_DATA);
   const [selectedTheme, setSelectedTheme] = useState<Theme>(THEMES[1]);
   const [selectedColorScheme, setSelectedColorScheme] = useState<ColorScheme>(COLOR_SCHEMES[0]);
@@ -51,34 +52,6 @@ function App() {
       }
   }, []);
 
-  const handleDownloadPreview = async () => {
-    if (!previewCardRef.current) {
-      console.error("Preview card element not found for download.");
-      alert('Could not find card element to download.');
-      return;
-    }
-
-    try {
-      const cardElement = previewCardRef.current;
-      const targetWidth = 732;
-      const sourceWidth = cardElement.offsetWidth;
-      const pixelRatio = targetWidth / sourceWidth;
-
-      const dataUrl = await htmlToImage.toPng(cardElement, {
-        quality: 1,
-        pixelRatio: pixelRatio,
-      });
-
-      const link = document.createElement('a');
-      link.download = `${cardData.series}-${cardData.title.replace(/\s+/g, '_')}.png`;
-      link.href = dataUrl;
-      link.click();
-    } catch (error) {
-      console.error('Oops, something went wrong!', error);
-      alert('An error occurred while trying to generate the card image for download. Please check the console for details.');
-    }
-  };
-
   const handleGeneratePreview = async () => {
     setIsLoading(true);
     setError(null);
@@ -87,31 +60,34 @@ function App() {
     setLoadingMessage('Generating preview card idea...');
 
     try {
-        const [cardIdea] = await generateCardIdeas(cardData.series, selectedTheme.name, selectedImageStyle, cardData.stats, 1);
-        
-        setLoadingMessage(`Generating image for ${cardIdea.title}...`);
-        console.log('Image prompt:', cardIdea.imagePrompt);
-        const imageBase64 = await generateImage(cardIdea.imagePrompt);
+      const cardIdeas = await generateCardIdeas(cardData.series, selectedTheme.name, selectedImageStyle, cardData.stats, 1);
+      const cardIdea = cardIdeas && cardIdeas.length > 0 ? cardIdeas[0] : undefined;
+      if (!cardIdea || !cardIdea.title || !cardIdea.imagePrompt || !Array.isArray(cardIdea.stats)) {
+        setError('Failed to generate a valid card idea. Please try again.');
+        return;
+      }
+      setLoadingMessage(`Generating image for ${cardIdea.title}...`);
+      const imageBase64 = await generateImage(cardIdea.imagePrompt);
 
-        const newPreviewCardData = {
-            id: `card-preview-${Date.now()}`,
-            title: cardIdea.title,
-            series: cardData.series,
-            image: `data:image/jpeg;base64,${imageBase64}`,
-            stats: cardIdea.stats,
-            rarity: getRandomRarity(),
-            cardNumber: 1,
-            totalCards: 4,
-        };
+      const newPreviewCardData = {
+        id: `card-preview-${Date.now()}`,
+        title: cardIdea.title,
+        series: cardData.series,
+        image: `data:image/jpeg;base64,${imageBase64}`,
+        stats: cardIdea.stats,
+        rarity: getRandomRarity(),
+        cardNumber: 1,
+        totalCards: 4,
+      };
 
-        setCardData(newPreviewCardData); // Update the live preview
-        setPreviewCard(newPreviewCardData); // Save for the final pack
+      setCardData(newPreviewCardData); // Update the live preview
+      setPreviewCard(newPreviewCardData); // Save for the final pack
 
     } catch (e: any) {
-        setError(e.message || 'An unknown error occurred during preview generation.');
+      setError(e.message || 'An unknown error occurred during preview generation.');
     } finally {
-        setIsLoading(false);
-        setLoadingMessage('');
+      setIsLoading(false);
+      setLoadingMessage('');
     }
   };
 
@@ -131,23 +107,23 @@ function App() {
         
         const newCards: CardData[] = [previewCard]; // Start with the preview card
 
-        for (let i = 0; i < otherCardIdeas.length; i++) {
-            const idea = otherCardIdeas[i];
-            setLoadingMessage(`Generating image for ${idea.card_title}... (${i + 1}/${otherCardIdeas.length})`);
-            
-            const imageBase64 = await generateImage(idea.imagePrompt);
-            
-            newCards.push({
-                id: `card-${Date.now()}-${i}`,
-                title: idea.title,
-                series: cardData.series,
-                image: `data:image/jpeg;base64,${imageBase64}`,
-                stats: idea.stats,
-                rarity: getRandomRarity(),
-                cardNumber: i + 2, // Start from card 2
-                totalCards: 4,
-            });
-        }
+    for (let i = 0; i < otherCardIdeas.length; i++) {
+      const idea = otherCardIdeas[i];
+      setLoadingMessage(`Generating image for ${idea.title}... (${i + 1}/${otherCardIdeas.length})`);
+
+      const imageBase64 = await generateImage(idea.imagePrompt);
+
+      newCards.push({
+        id: `card-${Date.now()}-${i}`,
+        title: idea.title,
+        series: cardData.series,
+        image: `data:image/jpeg;base64,${imageBase64}`,
+        stats: idea.stats,
+        rarity: getRandomRarity(),
+        cardNumber: i + 2, // Start from card 2
+        totalCards: 4,
+      });
+    }
 
         setGeneratedCards(newCards);
 
@@ -159,6 +135,68 @@ function App() {
     }
   };
 
+  const handleDownloadPreview = async () => {
+    if (!previewCardRef.current) {
+      console.error("Preview card element not found for download.");
+      alert('Could not find card element to download.');
+      return;
+    }
+    try {
+      setIsDownloading(true);
+      const cardElement = previewCardRef.current;
+      if (!cardElement) throw new Error('Card element not found.');
+
+      // Wait for image and header to load (especially on mobile)
+      const img = cardElement.querySelector('img');
+      if (img && !img.complete) {
+        await new Promise(resolve => {
+          img.onload = () => resolve(true);
+          img.onerror = () => resolve(false);
+        });
+      }
+      // Wait for header to be visible
+      const header = cardElement.querySelector('h2');
+      if (header && header.offsetHeight === 0) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      // Short delay to ensure DOM is painted (especially on mobile)
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Use fixed pixel size and devicePixelRatio for download
+      const targetWidth = 732;
+      const targetHeight = Math.round(targetWidth * 1.61); // 1179 (1:1.61 aspect ratio)
+      const pixelRatio = window.devicePixelRatio || 2;
+
+      // Force fixed size for download
+      cardElement.style.width = `${targetWidth}px`;
+      cardElement.style.height = `${targetHeight}px`;
+
+      const dataUrl = await htmlToImage.toPng(cardElement, {
+        quality: 1,
+        width: targetWidth,
+        height: targetHeight,
+        pixelRatio,
+        style: {
+          width: `${targetWidth}px`,
+          height: `${targetHeight}px`,
+        },
+      });
+
+      // Restore style
+      cardElement.style.width = '';
+      cardElement.style.height = '';
+      setIsDownloading(false);
+
+      const link = document.createElement('a');
+      link.download = `${cardData.series}-${cardData.title.replace(/\s+/g, '_')}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      setIsDownloading(false);
+      console.error('Oops, something went wrong!', error);
+      alert('An error occurred while trying to generate the card image for download. Please check the console for details.');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 sm:p-8">
