@@ -12,6 +12,10 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      server: {
+        port: 8088,
+        host: true, // Allow access from any IP address
       }
     };
 });

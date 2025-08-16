@@ -1,6 +1,5 @@
 
-import React, { useState, useCallback, useRef } from 'react';
-import * as htmlToImage from 'html-to-image';
+import React, { useState, useCallback } from 'react';
 import ControlPanel from './components/ControlPanel';
 import CardPreview from './components/CardPreview';
 import GeneratedCardsDisplay from './components/GeneratedCardsDisplay';
@@ -8,7 +7,6 @@ import Loader from './components/Loader';
 import { generateCardIdeas, generateImage, generateStatsForTheme } from './services/geminiService';
 import type { CardData, ColorScheme, ImageStyle, Theme, Rarity } from './types';
 import { COLOR_SCHEMES, DEFAULT_CARD_DATA, IMAGE_STYLES, THEMES } from './constants';
-import { DownloadIcon } from './components/icons';
 
 const getRandomRarity = (): Rarity => {
     const rand = Math.random() * 100;
@@ -29,7 +27,6 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const previewCardRef = useRef<HTMLDivElement>(null);
 
   const handleThemeChange = useCallback(async (theme: Theme) => {
       setSelectedTheme(theme);
@@ -51,34 +48,6 @@ function App() {
       }
   }, []);
 
-  const handleDownloadPreview = async () => {
-    if (!previewCardRef.current) {
-      console.error("Preview card element not found for download.");
-      alert('Could not find card element to download.');
-      return;
-    }
-
-    try {
-      const cardElement = previewCardRef.current;
-      const targetWidth = 732;
-      const sourceWidth = cardElement.offsetWidth;
-      const pixelRatio = targetWidth / sourceWidth;
-
-      const dataUrl = await htmlToImage.toPng(cardElement, {
-        quality: 1,
-        pixelRatio: pixelRatio,
-      });
-
-      const link = document.createElement('a');
-      link.download = `${cardData.series}-${cardData.title.replace(/\s+/g, '_')}.png`;
-      link.href = dataUrl;
-      link.click();
-    } catch (error) {
-      console.error('Oops, something went wrong!', error);
-      alert('An error occurred while trying to generate the card image for download. Please check the console for details.');
-    }
-  };
-
   const handleGeneratePreview = async () => {
     setIsLoading(true);
     setError(null);
@@ -87,30 +56,34 @@ function App() {
     setLoadingMessage('Generating preview card idea...');
 
     try {
-        const [cardIdea] = await generateCardIdeas(cardData.series, selectedTheme.name, selectedImageStyle, cardData.stats, 1);
-        
-        setLoadingMessage(`Generating image for ${cardIdea.title}...`);
-        const imageBase64 = await generateImage(cardIdea.imagePrompt);
+      const cardIdeas = await generateCardIdeas(cardData.series, selectedTheme.name, selectedImageStyle, cardData.stats, 1);
+      const cardIdea = cardIdeas && cardIdeas.length > 0 ? cardIdeas[0] : undefined;
+      if (!cardIdea || !cardIdea.title || !cardIdea.imagePrompt || !Array.isArray(cardIdea.stats)) {
+        setError('Failed to generate a valid card idea. Please try again.');
+        return;
+      }
+      setLoadingMessage(`Generating image for ${cardIdea.title}...`);
+      const imageBase64 = await generateImage(cardIdea.imagePrompt);
 
-        const newPreviewCardData = {
-            id: `card-preview-${Date.now()}`,
-            title: cardIdea.title,
-            series: cardData.series,
-            image: `data:image/jpeg;base64,${imageBase64}`,
-            stats: cardIdea.stats,
-            rarity: getRandomRarity(),
-            cardNumber: 1,
-            totalCards: 4,
-        };
+      const newPreviewCardData = {
+        id: `card-preview-${Date.now()}`,
+        title: cardIdea.title,
+        series: cardData.series,
+        image: `data:image/jpeg;base64,${imageBase64}`,
+        stats: cardIdea.stats,
+        rarity: getRandomRarity(),
+        cardNumber: 1,
+        totalCards: 4,
+      };
 
-        setCardData(newPreviewCardData); // Update the live preview
-        setPreviewCard(newPreviewCardData); // Save for the final pack
+      setCardData(newPreviewCardData); // Update the live preview
+      setPreviewCard(newPreviewCardData); // Save for the final pack
 
     } catch (e: any) {
-        setError(e.message || 'An unknown error occurred during preview generation.');
+      setError(e.message || 'An unknown error occurred during preview generation.');
     } finally {
-        setIsLoading(false);
-        setLoadingMessage('');
+      setIsLoading(false);
+      setLoadingMessage('');
     }
   };
 
@@ -126,26 +99,34 @@ function App() {
     setLoadingMessage('Generating rest of pack...');
 
     try {
-        const otherCardIdeas = await generateCardIdeas(cardData.series, selectedTheme.name, selectedImageStyle, cardData.stats, 3, previewCard.title);
-        
         const newCards: CardData[] = [previewCard]; // Start with the preview card
 
-        for (let i = 0; i < otherCardIdeas.length; i++) {
-            const idea = otherCardIdeas[i];
-            setLoadingMessage(`Generating image for ${idea.title}... (${i + 1}/${otherCardIdeas.length})`);
-            
-            const imageBase64 = await generateImage(idea.imagePrompt);
-            
-            newCards.push({
-                id: `card-${Date.now()}-${i}`,
-                title: idea.title,
-                series: cardData.series,
-                image: `data:image/jpeg;base64,${imageBase64}`,
-                stats: idea.stats,
-                rarity: getRandomRarity(),
-                cardNumber: i + 2, // Start from card 2
-                totalCards: 4,
-            });
+        // Generate 3 additional cards one at a time
+        for (let i = 0; i < 3; i++) {
+          setLoadingMessage(`Generating card ${i + 2} of 4...`);
+          
+          // Generate a single card idea
+          const cardIdeas = await generateCardIdeas(cardData.series, selectedTheme.name, selectedImageStyle, cardData.stats, 1, previewCard.title);
+          const cardIdea = cardIdeas && cardIdeas.length > 0 ? cardIdeas[0] : undefined;
+          
+          if (!cardIdea || !cardIdea.title || !cardIdea.imagePrompt || !Array.isArray(cardIdea.stats)) {
+            console.warn(`Failed to generate card ${i + 2}, skipping...`);
+            continue;
+          }
+          
+          setLoadingMessage(`Generating image for ${cardIdea.title}... (${i + 2}/4)`);
+          const imageBase64 = await generateImage(cardIdea.imagePrompt);
+
+          newCards.push({
+            id: `card-${Date.now()}-${i}`,
+            title: cardIdea.title,
+            series: cardData.series,
+            image: `data:image/jpeg;base64,${imageBase64}`,
+            stats: cardIdea.stats,
+            rarity: getRandomRarity(),
+            cardNumber: i + 2, // Start from card 2
+            totalCards: 4,
+          });
         }
 
         setGeneratedCards(newCards);
@@ -197,14 +178,7 @@ function App() {
         </div>
         <div className="lg:order-2 flex flex-col items-center justify-start">
             <h3 className="text-2xl font-bold text-gray-300 mb-4">Live Preview</h3>
-            <CardPreview cardRef={previewCardRef} cardData={cardData} colorScheme={selectedColorScheme} />
-            <button
-              onClick={handleDownloadPreview}
-              className="w-full max-w-sm mt-4 flex items-center justify-center gap-2 py-2 px-4 bg-green-600 hover:bg-green-700 rounded-lg text-lg font-bold transition-colors"
-            >
-              <DownloadIcon className="w-5 h-5" />
-              Download Preview
-            </button>
+            <CardPreview cardData={cardData} colorScheme={selectedColorScheme} />
         </div>
       </main>
 
