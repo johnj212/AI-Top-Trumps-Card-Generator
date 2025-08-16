@@ -4,14 +4,14 @@ import type { CardIdea, ImageStyle, Statistic } from '../types';
 
 const DEFAULT_DEV_API_URL = 'http://localhost:3001/api/generate';
 const API_URL =
-  typeof process !== 'undefined' && process.env && process.env.GEMINI_API_URL
-    ? process.env.GEMINI_API_URL
+  typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_URL
+    ? import.meta.env.VITE_GEMINI_API_URL
     : DEFAULT_DEV_API_URL;
 
 // Fail fast in production if API_URL is not set
 if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && API_URL === DEFAULT_DEV_API_URL) {
   const errorMsg =
-    'GEMINI_API_URL environment variable is not set. This is required for production deployments. Please configure GEMINI_API_URL.';
+    'VITE_GEMINI_API_URL environment variable is not set. This is required for production deployments. Please configure VITE_GEMINI_API_URL.';
   console.error(errorMsg);
   throw new Error(errorMsg);
 }

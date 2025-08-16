@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
       },
       server: {
         port: 8088,
+        host: true, // Allow access from any IP address
       }
     };
 });
