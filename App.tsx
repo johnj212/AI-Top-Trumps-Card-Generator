@@ -90,6 +90,7 @@ function App() {
         const [cardIdea] = await generateCardIdeas(cardData.series, selectedTheme.name, selectedImageStyle, cardData.stats, 1);
         
         setLoadingMessage(`Generating image for ${cardIdea.title}...`);
+        console.log('Image prompt:', cardIdea.imagePrompt);
         const imageBase64 = await generateImage(cardIdea.imagePrompt);
 
         const newPreviewCardData = {
