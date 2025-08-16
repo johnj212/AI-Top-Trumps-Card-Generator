@@ -49,35 +49,43 @@ export async function generateCardIdeas(seriesName: string, theme: string, image
   try {
     const jsonText = await callApi(prompt, "gemini-2.5-flash");
     console.log('Gemini response for card ideas:', jsonText);
-    const result = JSON.parse(jsonText);
+    const rawResult = JSON.parse(jsonText);
 
-    const processCardConcept = (concept: any) => {
-        const stats = Object.entries(concept.statistics).map(([name, value]) => ({ name, value: value as number }));
+    let cardConcepts: any[];
+
+    // Normalize the raw result into an array of card concepts
+    if (Array.isArray(rawResult)) {
+        cardConcepts = rawResult;
+    } else if (rawResult.card_concept) {
+        // If it's a single object with a 'card_concept' key
+        if (Array.isArray(rawResult.card_concept)) {
+            cardConcepts = rawResult.card_concept;
+        } else {
+            cardConcepts = [rawResult.card_concept];
+        }
+    } else {
+        // Assume it's a single flat object
+        cardConcepts = [rawResult];
+    }
+
+    const processedCardIdeas = cardConcepts.map(concept => {
+        // Use a more robust way to get title, stats, and imagePrompt
+        const title = concept.title || concept.card_title;
+        const imagePrompt = concept.image_prompt || concept.ai_image_prompt;
+        const statsData = concept.stats || concept.statistics;
+
+        const stats = Object.entries(statsData).map(([name, value]) => ({ name, value: value as number }));
+
         return {
-            title: concept.title,
+            title: title,
             stats: stats,
-            imagePrompt: concept.image_prompt
+            imagePrompt: imagePrompt
         };
-    };
+    });
 
-    if (Array.isArray(result.card_concept)) {
-        const cardIdeas = result.card_concept.map(processCardConcept);
-        console.log('Card ideas before return (array of card_concept):', cardIdeas);
-        return cardIdeas;
-    } else if (result.card_concept) {
-        const cardIdea = processCardConcept(result.card_concept);
-        console.log('Card idea before return (single card_concept):', cardIdea);
-        return [cardIdea];
-    }
+    console.log('Processed card ideas before return:', processedCardIdeas);
+    return processedCardIdeas;
 
-    // Handle the case where the structure is flat (as was originally expected)
-    if (count === 1 && !Array.isArray(result)) {
-        console.log('Card idea before return (flat structure):', result);
-        return [result];
-    }
-    console.log('Card ideas before return (flat array):', result);
-    return result;
-    
   } catch (error) {
     console.error("Error generating card ideas:", error);
     throw new Error("Failed to generate card ideas. Please check your API key and try again.");
