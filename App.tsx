@@ -1,5 +1,6 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
+import * as htmlToImage from 'html-to-image';
 import ControlPanel from './components/ControlPanel';
 import CardPreview from './components/CardPreview';
 import GeneratedCardsDisplay from './components/GeneratedCardsDisplay';
@@ -7,6 +8,7 @@ import Loader from './components/Loader';
 import { generateCardIdeas, generateImage, generateStatsForTheme } from './services/geminiService';
 import type { CardData, ColorScheme, ImageStyle, Theme, Rarity } from './types';
 import { COLOR_SCHEMES, DEFAULT_CARD_DATA, IMAGE_STYLES, THEMES } from './constants';
+import { DownloadIcon } from './components/icons';
 
 const getRandomRarity = (): Rarity => {
     const rand = Math.random() * 100;
@@ -27,6 +29,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const previewCardRef = useRef<HTMLDivElement>(null);
 
   const handleThemeChange = useCallback(async (theme: Theme) => {
       setSelectedTheme(theme);
@@ -47,6 +50,34 @@ function App() {
           setIsLoading(false);
       }
   }, []);
+
+  const handleDownloadPreview = async () => {
+    if (!previewCardRef.current) {
+      console.error("Preview card element not found for download.");
+      alert('Could not find card element to download.');
+      return;
+    }
+
+    try {
+      const cardElement = previewCardRef.current;
+      const targetWidth = 732;
+      const sourceWidth = cardElement.offsetWidth;
+      const pixelRatio = targetWidth / sourceWidth;
+
+      const dataUrl = await htmlToImage.toPng(cardElement, {
+        quality: 1,
+        pixelRatio: pixelRatio,
+      });
+
+      const link = document.createElement('a');
+      link.download = `${cardData.series}-${cardData.title.replace(/\s+/g, '_')}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('Oops, something went wrong!', error);
+      alert('An error occurred while trying to generate the card image for download. Please check the console for details.');
+    }
+  };
 
   const handleGeneratePreview = async () => {
     setIsLoading(true);
@@ -166,7 +197,14 @@ function App() {
         </div>
         <div className="lg:order-2 flex flex-col items-center justify-start">
             <h3 className="text-2xl font-bold text-gray-300 mb-4">Live Preview</h3>
-            <CardPreview cardData={cardData} colorScheme={selectedColorScheme} />
+            <CardPreview cardRef={previewCardRef} cardData={cardData} colorScheme={selectedColorScheme} />
+            <button
+              onClick={handleDownloadPreview}
+              className="w-full max-w-sm mt-4 flex items-center justify-center gap-2 py-2 px-4 bg-green-600 hover:bg-green-700 rounded-lg text-lg font-bold transition-colors"
+            >
+              <DownloadIcon className="w-5 h-5" />
+              Download Preview
+            </button>
         </div>
       </main>
 

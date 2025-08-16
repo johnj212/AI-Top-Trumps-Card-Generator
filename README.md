@@ -1,20 +1,37 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# AI Top Trumps Card Generator
 
-# Run and deploy your AI Studio app
+![Example Card](https://storage.googleapis.com/aif-quick-start-images/top-trumps-card-example.png)
 
-This contains everything you need to run your app locally.
+An AI-powered web application to create, customize, and generate professional-quality Top Trumps-style trading cards. Users can choose themes, customize stats, and generate unique images for their cards.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1sUcQ5_pSpMWwrUS1bI1zsgf4KyZ_Irvg
+## ✨ Features
 
-## Run Locally
+-   **AI-Powered Content Generation**: Utilizes `gemini-2.5-flash` to dynamically generate thematic statistics and full card packs with unique titles and values.
+-   **Stunning AI Image Generation**: Leverages `imagen-3.0-generate-002` to create high-quality, custom artwork for each card based on dynamic prompts.
+-   **Live Interactive Preview**: Instantly see how your card looks as you tweak series names, titles, stats, and styles.
+-   **Deep Customization**:
+    -   Choose from a variety of themes (Dinosaurs, Fantasy, Automotive, etc.).
+    -   Select different color schemes to match your theme.
+    -   Apply unique image styles (Holographic, Vintage, Cyberpunk, etc.).
+-   **Full Pack Generation**: Create a set of 4 unique cards, starting with your customized preview card.
+-   **High-Resolution Downloads**: Download any generated card, including the live preview, as a high-quality PNG file, ready for printing or sharing.
 
-**Prerequisites:**  Node.js
+## 🚀 How to Use
 
+1.  **Customize Basics**: Start by giving your card series a name (e.g., "Mythical Creatures") and a title for your first card (e.g., "Griffin").
+2.  **Select a Theme**: Choose a theme from the dropdown. This will automatically generate 6 relevant statistic names using AI.
+3.  **Choose a Style**: Select a Color Scheme and an Image Style that best fits your vision.
+4.  **Tweak Stats**: Adjust the AI-generated stats or randomize them for fun.
+5.  **Generate Preview**: Click "Generate Preview Card". The AI will generate a new title, balanced stats, and a stunning image based on your settings. The live preview will update with the AI-generated result.
+6.  **Download (Optional)**: Like the preview? Download it immediately using the "Download Preview" button.
+7.  **Generate Full Pack**: Once you're happy with the preview card, click "Generate Full Pack". The application will generate 3 more unique cards that match your theme and style.
+8.  **Download Your Cards**: All generated cards from the pack will be displayed at the bottom, each with its own download button.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 🛠️ Tech Stack
+
+-   **Frontend**: React, TypeScript, Tailwind CSS
+-   **AI Models**:
+    -   Google Gemini API (`@google/genai`)
+    -   Text Generation: `gemini-2.5-flash`
+    -   Image Generation: `imagen-3.0-generate-002`
+-   **Card Export**: `html-to-image` library for converting HTML components to PNG images.
