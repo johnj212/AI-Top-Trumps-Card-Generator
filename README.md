@@ -1,6 +1,6 @@
 # AI Top Trumps Card Generator
 
-![Example Card](https://storage.googleapis.com/aif-quick-start-images/top-trumps-card-example.png)
+![Example Card](/example_images/*)
 
 An AI-powered web application to create, customize, and generate professional-quality Top Trumps-style trading cards. Users can choose themes, customize stats, and generate unique images for their cards.
 
