@@ -14,7 +14,7 @@ An AI-powered web application to create, customize, and generate professional-qu
     -   Select different color schemes to match your theme.
     -   Apply unique image styles (Holographic, Vintage, Cyberpunk, etc.).
 -   **Full Pack Generation**: Create a set of 4 unique cards, starting with your customized preview card.
--   **High-Resolution Downloads**: Download any generated card, including the live preview, as a high-quality PNG file, ready for printing or sharing.
+-   **Optimized Image Generation**: All images generated as perfect 1:1 squares for optimal card display.
 
 ## 🚀 How to Use
 
@@ -23,9 +23,50 @@ An AI-powered web application to create, customize, and generate professional-qu
 3.  **Choose a Style**: Select a Color Scheme and an Image Style that best fits your vision.
 4.  **Tweak Stats**: Adjust the AI-generated stats or randomize them for fun.
 5.  **Generate Preview**: Click "Generate Preview Card". The AI will generate a new title, balanced stats, and a stunning image based on your settings. The live preview will update with the AI-generated result.
-6.  **Download (Optional)**: Like the preview? Download it immediately using the "Download Preview" button.
-7.  **Generate Full Pack**: Once you're happy with the preview card, click "Generate Full Pack". The application will generate 3 more unique cards that match your theme and style.
-8.  **Download Your Cards**: All generated cards from the pack will be displayed at the bottom, each with its own download button.
+6.  **Generate Full Pack**: Once you're happy with the preview card, click "Generate Full Pack". The application will generate 3 more unique cards that match your theme and style.
+7.  **View Your Cards**: All generated cards from the pack will be displayed at the bottom for you to admire and use.
+
+## 🛠️ Getting Started
+
+### Prerequisites
+
+- Node.js and npm installed.
+- A Google Gemini API key.
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-username/AI-Top-Trumps-Card-Generator.git
+   cd AI-Top-Trumps-Card-Generator
+   ```
+
+2. **Install frontend dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Install backend dependencies:**
+   ```bash
+   cd server
+   npm install
+   cd ..
+   ```
+
+4. **Set up your environment variables:**
+   - Create a new file named `.env` in the `server` directory.
+   - Add your Gemini API key to the `.env` file as follows:
+     ```
+     GEMINI_API_KEY=your_api_key_here
+     ```
+
+### Running the Application
+
+- **Start both the frontend and backend servers concurrently:**
+  ```bash
+  npm run dev
+  ```
+- The frontend will be available at `http://localhost:8088` and the backend at `http://localhost:3001`.
 
 ## 🛠️ Tech Stack
 
@@ -34,4 +75,4 @@ An AI-powered web application to create, customize, and generate professional-qu
     -   Google Gemini API (`@google/genai`)
     -   Text Generation: `gemini-2.5-flash`
     -   Image Generation: `imagen-3.0-generate-002`
--   **Card Export**: `html-to-image` library for converting HTML components to PNG images.
+-   **Card Display**: Optimized CSS layout with perfect 1:1.61 aspect ratio for authentic trading card proportions.
