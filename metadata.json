@@ -1,0 +1,5 @@
+{
+  "name": "AI Top Trumps Card Generator",
+  "description": "An AI-powered web application to create, customize, and generate professional-quality Top Trumps-style trading cards. Users can choose themes, customize stats, and generate unique images for their cards.",
+  "requestFramePermissions": []
+}
