@@ -64,3 +64,6 @@
 ## Maintenance
 - If Gemini API changes, update backend parsing logic first, then update frontend contract.
 - Always test both stats and image generation after any change.
+
+## Rules
+REbuild and restart docker post changes.

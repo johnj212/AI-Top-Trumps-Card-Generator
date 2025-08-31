@@ -1,0 +1,40 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ai-top-trumps-card-generator
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/execution-environment: gen2
+spec:
+  template:
+    metadata:
+      annotations:
+        # Set memory and CPU limits
+        run.googleapis.com/memory: "2Gi"
+        run.googleapis.com/cpu: "2"
+        # Allow up to 1000 concurrent requests
+        run.googleapis.com/execution-environment: gen2
+        # Set timeout to 15 minutes for AI generation
+        run.googleapis.com/timeout: "900s"
+    spec:
+      # Use the service account for storage access
+      serviceAccountName: github-actions@whispers-of-the-wildwood.iam.gserviceaccount.com
+      containerConcurrency: 100
+      timeoutSeconds: 900
+      containers:
+      - image: gcr.io/whispers-of-the-wildwood/ai-top-trumps-card-generator
+        ports:
+        - containerPort: 8080
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: STORAGE_BUCKET
+          value: "cards_stroage"
+        # GEMINI_API_KEY will be set via Secret Manager
+        resources:
+          limits:
+            memory: "2Gi"
+            cpu: "2000m"
+  traffic:
+  - percent: 100
+    latestRevision: true

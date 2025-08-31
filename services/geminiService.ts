@@ -3,20 +3,26 @@ import type { CardIdea, ImageStyle, Statistic } from '../types';
 
 
 const DEFAULT_DEV_API_URL = 'http://localhost:3001/api/generate';
-const API_URL =
-  typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_URL
-    ? import.meta.env.VITE_GEMINI_API_URL
-    : DEFAULT_DEV_API_URL;
 
-// Fail fast in production if API_URL is not set
-if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && API_URL === DEFAULT_DEV_API_URL) {
-  const errorMsg =
-    'VITE_GEMINI_API_URL environment variable is not set. This is required for production deployments. Please configure VITE_GEMINI_API_URL.';
-  console.error(errorMsg);
-  throw new Error(errorMsg);
-}
+// In production (Cloud Run), use relative URL since frontend and backend are served together
+const getApiUrl = () => {
+  // If environment variable is set, use it
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_URL) {
+    return import.meta.env.VITE_GEMINI_API_URL;
+  }
+  
+  // If we're on localhost, use the dev URL
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return DEFAULT_DEV_API_URL;
+  }
+  
+  // In production, use relative URL
+  return '/api/generate';
+};
 
-async function callApi(prompt: string, modelName: string) {
+const API_URL = getApiUrl();
+
+async function callApi(prompt: string, modelName: string, customBody?: any) {
   const MAX_ATTEMPTS = 3;
   const TIMEOUT_MS = 30000; // configurable timeout (30s)
   const BACKOFF_MS = 1000; // initial backoff (1s)
@@ -31,7 +37,7 @@ async function callApi(prompt: string, modelName: string) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt, modelName }),
+        body: JSON.stringify(customBody || { prompt, modelName }),
         signal: controller.signal,
       });
       clearTimeout(timeout);

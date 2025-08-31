@@ -65,32 +65,89 @@
 - If Gemini API changes, update backend parsing logic first, then update frontend contract.
 - Always test both stats and image generation after any change.
 
-## Recent Updates
-* ✅ Fixed download functionality completely removed per user request
-* ✅ Fixed card aspect ratios - images now generate as 1:1 square, cards display as 1:1.61 portrait
-* ✅ Fixed pack generation - now uses reliable single-card generation called 3x instead of batch generation
-* ✅ Improved rarity display positioning with proper CSS relative positioning
-* ✅ Enhanced JSON parsing with better error handling and explicit format instructions
+## Recent Development History
+* ✅ Removed download functionality per requirements
+* ✅ Optimized card aspect ratios (images: 1:1 square, cards: 1:1.61 portrait)
+* ✅ Implemented sequential pack generation for better reliability
+* ✅ Enhanced rarity system with proper positioning
+* ✅ Improved JSON parsing with comprehensive error handling
+* ✅ Added Docker containerization support
+* ✅ Implemented theme-based automatic stat generation
+* ✅ Enhanced UI/UX with loading states and error handling
+* ✅ Optimized mobile responsiveness
 
-## To Do list
-* Add tests 
-* ✅ ~~Desktop web card view is working well but the download is much longer. Go back and define the exact card download size: 62mm x 100mm (aspect ratio 1:1.61) to match physical card dimensions. Image ratio is 1:1~~ - COMPLETED
-* ✅ ~~Generate Full pack not displaying the cards, looks good in the logs but doesnot display.~~ - COMPLETED  
-* ✅ ~~Fix mobile download issue~~ - REMOVED (download functionality removed)
-* ✅ ~~create 2 columns for the stats to save space~~ - COMPLETED
-* Save or cache Stats generation to reduce calls to the ai model for each series collection.
-* Save all images in a media/images folder
-* Save all cards in a media/card folder
-* Add some rate limiting
-    ### Optional for later on
-* Add some security / authenticaion
+## Current Project Status
 
-## Architecture Notes
-* Pack generation now uses sequential single-card API calls for better reliability
-* Image generation configured for 1:1 aspect ratio in server (server.js:46)
-* Card display uses CSS aspect-[62/100] for proper 1:1.61 card proportions
-* Frontend timeout increased to 30s to handle longer generation times
-* All download functionality removed as requested
+### Completed Features
+* ✅ AI-powered card content generation using `gemini-2.5-flash`
+* ✅ AI image generation using `imagen-3.0-generate-002`
+* ✅ Live interactive preview system
+* ✅ Full pack generation (4 cards per pack)
+* ✅ Theme-based stat generation
+* ✅ Multiple color schemes and image styles
+* ✅ Responsive design with mobile optimization
+* ✅ Docker support with docker-compose
+* ✅ Card aspect ratio optimization (1:1.61 for authentic trading card proportions)
+* ✅ Rarity system with weighted random distribution
+* ✅ Two-column stats layout for space efficiency
+* ✅ Sequential pack generation for better reliability
+* ✅ Robust error handling and JSON parsing
+
+### Current Architecture
+* **Frontend**: React + TypeScript + Tailwind CSS (Port 8088)
+* **Backend**: Express.js + Node.js (Port 3001)
+* **AI Integration**: Google Gemini API (`@google/genai`)
+* **Deployment**: Docker + docker-compose support
+
+### To Do List
+* Add comprehensive tests (unit, integration, e2e)
+* Implement stats caching to reduce AI API calls
+* Add media storage system (images and cards folders)
+* Implement API rate limiting
+* Add authentication and security features
+* Performance optimization and monitoring
+* Add card export functionality (if needed)
+* Database integration for persistent storage
+
+## Technical Architecture
+
+### Frontend (React + TypeScript)
+* **Port**: 8088 (Vite dev server)
+* **Main Components**:
+  - `App.tsx`: Main application logic and state management
+  - `ControlPanel.tsx`: User interface for card customization
+  - `CardPreview.tsx`: Real-time card preview
+  - `GeneratedCardsDisplay.tsx`: Display generated card packs
+  - `Loader.tsx`: Loading states and progress indicators
+* **Styling**: Tailwind CSS with custom card aspect ratios
+* **State Management**: React useState hooks with callback optimization
+
+### Backend (Express.js)
+* **Port**: 3001
+* **Main File**: `server/server.js`
+* **API Endpoints**: Single `/api/generate` endpoint handling both text and image generation
+* **AI Integration**: Google Gemini API with proper error handling
+* **Features**: CORS enabled, static file serving, environment variable validation
+
+### AI Integration Details
+* **Text Generation**: `gemini-2.5-flash` for stats and card ideas
+* **Image Generation**: `imagen-3.0-generate-002` with 3:4 aspect ratio configuration
+* **Response Format**: Standardized `{ kind, data }` structure
+* **Error Handling**: Comprehensive parsing with fallback error responses
+
+### Development Setup
+* **Package Manager**: npm with workspace support
+* **Build Tool**: Vite for frontend bundling
+* **Process Management**: Concurrently for running both servers
+* **Environment**: Dotenv for API key management
+* **Containerization**: Docker with multi-stage builds
+
+### Card Generation Pipeline
+1. Theme selection triggers stat generation via AI
+2. Preview card generation (title, stats, image)
+3. Pack generation (3 additional cards sequentially)
+4. Image optimization and display with proper aspect ratios
+5. Rarity assignment with weighted randomization
 
 ## Rules
 * Do not mention claude code in and comments or commits.

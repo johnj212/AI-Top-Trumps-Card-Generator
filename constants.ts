@@ -33,7 +33,7 @@ export const DEFAULT_CARD_DATA: CardData = {
     id: 'preview-card',
     title: "Spinosaurus aegyptiacus",
     series: "Dinosaurs",
-    image: `http://100.110.120.57:3001/example_images/Spinosaurus aegyptiacus 3x4.jpg`,
+    image: `/example_images/Spinosaurus aegyptiacus 3x4.jpg`,
     stats: [
         { name: "Height", value: 85 },
         { name: "Weight", value: 92 },

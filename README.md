@@ -1,8 +1,14 @@
-# AI Top Trumps Card Generator
+# 🎯 AI Top Trumps Card Generator
 
 ![Example Card](/example_images/Aircraft-Stratosphere_Sovereign.jpg) ![Example Card](/example_images/Dinosaurs-Carnotaurus__Horned_Hunter.jpg) ![Example Card](/example_images/Fantasy-The_Sunstone_Golem.jpg)
 
-An AI-powered web application to create, customize, and generate professional-quality Top Trumps-style trading cards. Users can choose themes, customize stats, and generate unique images for their cards.
+A state-of-the-art AI-powered web application that generates professional-quality Top Trumps-style trading cards. Harness the power of Google's Gemini AI to create unique themes, balanced statistics, and stunning artwork for your custom card collections.
+
+[![React](https://img.shields.io/badge/React-19.1.1-blue)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8.2-blue)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green)](https://nodejs.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 ## ✨ Features
 
@@ -76,3 +82,181 @@ An AI-powered web application to create, customize, and generate professional-qu
     -   Text Generation: `gemini-2.5-flash`
     -   Image Generation: `imagen-3.0-generate-002`
 -   **Card Display**: Optimized CSS layout with perfect 1:1.61 aspect ratio for authentic trading card proportions.
+
+## 🏗️ Technical Architecture
+
+### Frontend Stack
+- **React 19** with TypeScript for type-safe component development
+- **Tailwind CSS** for utility-first styling and responsive design
+- **Vite** for fast development and optimized production builds
+- **Custom Hooks** for state management and API integration
+
+### Backend Stack
+- **Node.js** with Express.js for robust server architecture
+- **Google Gemini API** (`@google/genai`) for AI-powered content generation
+- **CORS** enabled for cross-origin requests
+- **Dotenv** for secure environment variable management
+
+### AI Integration
+- **Text Generation**: `gemini-2.5-flash` for statistics and card content
+- **Image Generation**: `imagen-3.0-generate-002` for high-quality artwork
+- **Response Processing**: Custom JSON parsing with comprehensive error handling
+- **Rate Limiting**: Built-in request throttling and timeout management
+
+### Development Tools
+- **TypeScript** for full-stack type safety
+- **Concurrently** for running multiple development servers
+- **Docker & Docker Compose** for containerized deployment
+- **ESM Modules** for modern JavaScript imports
+
+### Card Rendering System
+- **Aspect Ratio**: Authentic 1:1.61 (62:100) trading card proportions
+- **Image Optimization**: 3:4 aspect ratio images optimized for card display
+- **Responsive Design**: Mobile-first approach with breakpoint optimization
+- **CSS Grid & Flexbox**: Modern layout techniques for precise positioning
+
+## 📁 Project Structure
+
+```
+AI-Top-Trumps-Card-Generator/
+├── components/                 # React components
+│   ├── CardPreview.tsx        # Live card preview
+│   ├── ControlPanel.tsx       # User interface controls
+│   ├── GeneratedCardsDisplay.tsx # Pack display
+│   └── Loader.tsx             # Loading states
+├── server/                    # Backend server
+│   ├── server.js             # Express server & API routes
+│   ├── package.json          # Server dependencies
+│   └── .env                  # Environment variables
+├── services/                  # Frontend services
+│   └── geminiService.ts      # AI API integration
+├── App.tsx                   # Main application component
+├── types.ts                  # TypeScript type definitions
+├── constants.ts              # App constants & configurations
+├── docker-compose.yml        # Container orchestration
+├── Dockerfile               # Container definition
+└── package.json             # Main project dependencies
+```
+
+## 🚀 Deployment Options
+
+### Docker Deployment (Recommended)
+```bash
+# Production deployment
+docker-compose up -d
+```
+
+### Manual Deployment
+```bash
+# Build frontend
+npm run build
+
+# Start backend
+cd server && npm start
+
+# Serve built frontend (using nginx, Apache, etc.)
+```
+
+### Environment Variables
+```env
+# Required
+GEMINI_API_KEY=your_gemini_api_key
+
+# Optional
+NODE_ENV=production
+PORT=3001
+```
+
+## 🔧 API Reference
+
+### POST `/api/generate`
+Generate AI content for cards
+
+**Request Body:**
+```json
+{
+  "prompt": "Your generation prompt",
+  "modelName": "gemini-2.5-flash" | "imagen-3.0-generate-002"
+}
+```
+
+**Response Formats:**
+
+*Text/Stats Generation:*
+```json
+{
+  "kind": "json",
+  "data": ["Stat 1", "Stat 2", ...] | [{ title, stats, imagePrompt }, ...]
+}
+```
+
+*Image Generation:*
+```json
+{
+  "kind": "image",
+  "mime": "image/jpeg",
+  "data": "base64_encoded_image"
+}
+```
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Commit your changes**: `git commit -m 'Add amazing feature'`
+4. **Push to branch**: `git push origin feature/amazing-feature`
+5. **Open a Pull Request**
+
+### Development Guidelines
+- Follow TypeScript best practices
+- Maintain existing code style (Tailwind CSS patterns)
+- Add appropriate error handling
+- Test both frontend and backend changes
+- Update documentation for new features
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**"GEMINI_API_KEY environment variable is missing"**
+- Ensure `.env` file exists in `server/` directory
+- Verify API key is correctly formatted
+- Check file permissions
+
+**"Failed to parse Gemini content as JSON"**
+- API response format may have changed
+- Check network connectivity
+- Verify API quota and billing status
+
+**Images not displaying**
+- Check browser console for CORS errors
+- Verify backend is running on port 3001
+- Ensure proper base64 encoding
+
+**Cards not generating**
+- Check AI model availability
+- Verify prompt format matches expected structure
+- Review server logs for detailed error messages
+
+### Debug Mode
+```bash
+# Enable detailed logging
+NODE_ENV=development npm run dev
+```
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- **Google Gemini API** for powerful AI content generation
+- **React & TypeScript** communities for excellent tooling
+- **Tailwind CSS** for beautiful, responsive styling
+- **Open Source Community** for inspiration and support
+
+---
+
+**Built with ❤️ and AI**

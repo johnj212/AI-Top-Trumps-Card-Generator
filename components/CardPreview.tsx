@@ -68,10 +68,10 @@ const CardPreview: React.FC<CardPreviewProps> = ({ cardData, colorScheme, isImag
             <img src={image} alt={title} className="object-cover w-full h-full" style={{ height: '100%', width: '100%' }} />
             {/* Subtle watermark overlay */}
             <div className="absolute bottom-2 left-2 right-2 flex justify-between items-end">
-              <div className="text-white text-sm font-bold opacity-60 bg-black/30 px-2 py-1 rounded backdrop-blur-sm">
+              <div className="text-white text-sm font-bold opacity-60 bg-black/30 px-2 py-1 rounded backdrop-blur-sm text-center">
                 {series}
               </div>
-              <div className="text-white text-sm font-bold opacity-60 bg-black/30 px-2 py-1 rounded backdrop-blur-sm">
+              <div className="text-white text-sm font-bold opacity-60 bg-black/30 px-2 py-1 rounded backdrop-blur-sm text-center">
                 {cardNumber}/{totalCards}
               </div>
             </div>
