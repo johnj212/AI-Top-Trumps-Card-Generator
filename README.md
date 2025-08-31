@@ -68,6 +68,28 @@ A state-of-the-art AI-powered web application that generates professional-qualit
 
 ### Running the Application
 
+### 🔧 Configure Environment Variables
+
+1. **Set up server environment:**
+   ```bash
+   cd server
+   cp .env.example .env
+   ```
+   
+2. **Edit `server/.env` with your actual values:**
+   - `GEMINI_API_KEY`: Get from [Google AI Studio](https://aistudio.google.com/app/apikey)
+   - `STORAGE_BUCKET`: Your Google Cloud Storage bucket name
+   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to your service account key
+
+3. **Set up Google Cloud credentials:**
+   ```bash
+   cp server/google-cloud-key.json.example server/google-cloud-key.json
+   ```
+   Then replace the placeholder values with your actual Google Cloud service account key.
+   Download from [Google Cloud Console](https://console.cloud.google.com/iam-admin/serviceaccounts).
+
+### 🚀 Start the Application
+
 - **Start both the frontend and backend servers concurrently:**
   ```bash
   npm run dev
@@ -140,7 +162,35 @@ AI-Top-Trumps-Card-Generator/
 
 ## 🚀 Deployment Options
 
-### Docker Deployment (Recommended)
+### Google Cloud Run (Production - Recommended)
+
+The application is optimized for Google Cloud Run deployment with automatic scaling and managed infrastructure.
+
+1. **Prerequisites:**
+   - [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) installed
+   - Google Cloud project with billing enabled
+   - Docker installed
+
+2. **Quick Deploy:**
+   ```bash
+   # Set your project ID
+   gcloud config set project YOUR_PROJECT_ID
+   
+   # Create Gemini API secret
+   echo -n 'YOUR_GEMINI_API_KEY' | gcloud secrets create gemini-api-key --data-file=-
+   
+   # Deploy to Cloud Run
+   ./deploy-simple.sh
+   ```
+
+3. **What the deployment includes:**
+   - Containerized application with optimized multi-stage Docker build
+   - Secret Manager integration for secure API key storage
+   - Automatic HTTPS with custom domain support
+   - Horizontal autoscaling (0-10 instances)
+   - Health check monitoring
+
+### Docker Deployment (Local/Self-Hosted)
 ```bash
 # Production deployment
 docker-compose up -d
