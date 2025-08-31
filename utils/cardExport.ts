@@ -101,14 +101,14 @@ export const exportCardAsImage = async (
       originalTitleStyle = titleElement.style.cssText;
       originalTitleClass = titleElement.className;
       
-      // Remove truncate class and apply centering
-      titleElement.className = originalTitleClass.replace('truncate', '').replace('whitespace-nowrap', '') + ' text-center';
-      titleElement.style.cssText += '; text-align: center !important; display: block !important; width: 100% !important; margin: 0 auto !important; white-space: normal !important; text-overflow: clip !important;';
+      // Remove truncate class and apply aggressive centering
+      titleElement.className = originalTitleClass.replace('truncate', '').replace('whitespace-nowrap', '').replace('text-left', '').replace('text-right', '') + ' text-center';
+      titleElement.style.cssText = 'text-align: center !important; display: block !important; width: 100% !important; margin: 0 auto !important; white-space: normal !important; text-overflow: clip !important; left: 0 !important; right: 0 !important; position: relative !important;' + (originalTitleStyle ? '; ' + originalTitleStyle : '');
     }
     
     if (titleContainer) {
       originalTitleContainerStyle = titleContainer.style.cssText;
-      titleContainer.style.cssText += '; display: flex !important; justify-content: center !important; align-items: center !important; text-align: center !important;';
+      titleContainer.style.cssText = 'display: flex !important; justify-content: center !important; align-items: center !important; text-align: center !important; width: 100% !important;' + (originalTitleContainerStyle ? '; ' + originalTitleContainerStyle : '');
     }
     
     // Fix rarity - only center the text WITHIN the existing positioned box
@@ -117,13 +117,13 @@ export const exportCardAsImage = async (
       rarityElement.style.cssText += '; text-align: center !important; display: flex !important; align-items: center !important; justify-content: center !important;';
     }
     
-    // Fix series watermark text centering
+    // Fix series watermark text centering - only center text within existing positioned container
     if (seriesElement) {
       originalSeriesStyle = seriesElement.style.cssText;
       seriesElement.style.cssText += '; text-align: center !important;';
     }
     
-    // Fix card number watermark text centering
+    // Fix card number watermark text centering - only center text within existing positioned container
     if (cardNumberElement) {
       originalCardNumberStyle = cardNumberElement.style.cssText;
       cardNumberElement.style.cssText += '; text-align: center !important;';
