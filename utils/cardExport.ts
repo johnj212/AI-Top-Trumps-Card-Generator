@@ -63,6 +63,10 @@ export const exportCardAsImage = async (
   const isMobile = isMobileDevice();
   let originalTransform = '';
   
+  // Declare style variables for cleanup
+  let originalTitleStyle = '';
+  let originalRarityStyle = '';
+  
   if (isMobile) {
     // Prevent scroll during generation
     document.body.style.overflow = 'hidden';
@@ -79,6 +83,51 @@ export const exportCardAsImage = async (
     const actualHeight = Math.round(rect.height);
     
     console.log(`Capturing card: ${actualWidth}x${actualHeight}px`);
+    
+    // Temporarily apply html2canvas-specific centering fixes
+    const titleElement = cardElement.querySelector('h1');
+    const titleContainer = cardElement.querySelector('h1')?.parentElement;
+    const rarityElement = cardElement.querySelector('[class*="absolute top-2 right-2"]');
+    const seriesElement = cardElement.querySelector('[class*="bottom-2 left-2"]');
+    const cardNumberElement = cardElement.querySelector('[class*="bottom-2 right-2"]');
+    
+    // Store original states
+    let originalTitleClass = '';
+    let originalTitleContainerStyle = '';
+    let originalSeriesStyle = '';
+    let originalCardNumberStyle = '';
+    
+    if (titleElement) {
+      originalTitleStyle = titleElement.style.cssText;
+      originalTitleClass = titleElement.className;
+      
+      // Remove truncate class and apply centering
+      titleElement.className = originalTitleClass.replace('truncate', '').replace('whitespace-nowrap', '') + ' text-center';
+      titleElement.style.cssText += '; text-align: center !important; display: block !important; width: 100% !important; margin: 0 auto !important; white-space: normal !important; text-overflow: clip !important;';
+    }
+    
+    if (titleContainer) {
+      originalTitleContainerStyle = titleContainer.style.cssText;
+      titleContainer.style.cssText += '; display: flex !important; justify-content: center !important; align-items: center !important; text-align: center !important;';
+    }
+    
+    // Fix rarity - only center the text WITHIN the existing positioned box
+    if (rarityElement) {
+      originalRarityStyle = rarityElement.style.cssText;
+      rarityElement.style.cssText += '; text-align: center !important; display: flex !important; align-items: center !important; justify-content: center !important;';
+    }
+    
+    // Fix series watermark text centering
+    if (seriesElement) {
+      originalSeriesStyle = seriesElement.style.cssText;
+      seriesElement.style.cssText += '; text-align: center !important;';
+    }
+    
+    // Fix card number watermark text centering
+    if (cardNumberElement) {
+      originalCardNumberStyle = cardNumberElement.style.cssText;
+      cardNumberElement.style.cssText += '; text-align: center !important;';
+    }
     
     // Configure html2canvas for mobile compatibility
     const canvas = await html2canvas(cardElement, {
@@ -125,10 +174,54 @@ export const exportCardAsImage = async (
       finalOptions.quality || 1.0
     );
 
+    // Restore original styles
+    if (titleElement) {
+      titleElement.style.cssText = originalTitleStyle;
+      titleElement.className = originalTitleClass;
+    }
+    if (titleContainer) {
+      titleContainer.style.cssText = originalTitleContainerStyle;
+    }
+    if (rarityElement) {
+      rarityElement.style.cssText = originalRarityStyle;
+    }
+    if (seriesElement) {
+      seriesElement.style.cssText = originalSeriesStyle;
+    }
+    if (cardNumberElement) {
+      cardNumberElement.style.cssText = originalCardNumberStyle;
+    }
+
     return dataURL;
 
   } catch (error) {
     console.error('Card export failed:', error);
+    
+    // Restore original styles even on error
+    const titleElement = cardElement.querySelector('h1');
+    const titleContainer = cardElement.querySelector('h1')?.parentElement;
+    const rarityElement = cardElement.querySelector('[class*="absolute top-2 right-2"]');
+    const seriesElement = cardElement.querySelector('[class*="bottom-2 left-2"]');
+    const cardNumberElement = cardElement.querySelector('[class*="bottom-2 right-2"]');
+    
+    if (titleElement && originalTitleStyle) {
+      titleElement.style.cssText = originalTitleStyle;
+      if (originalTitleClass) {
+        titleElement.className = originalTitleClass;
+      }
+    }
+    if (titleContainer && originalTitleContainerStyle) {
+      titleContainer.style.cssText = originalTitleContainerStyle;
+    }
+    if (rarityElement && originalRarityStyle) {
+      rarityElement.style.cssText = originalRarityStyle;
+    }
+    if (seriesElement && originalSeriesStyle) {
+      seriesElement.style.cssText = originalSeriesStyle;
+    }
+    if (cardNumberElement && originalCardNumberStyle) {
+      cardNumberElement.style.cssText = originalCardNumberStyle;
+    }
     
     // Fallback for mobile errors - try with lower quality
     if (isMobile && finalOptions.scale! > 1) {
