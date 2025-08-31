@@ -34,5 +34,13 @@ dist-ssr
 server/node_modules
 server/.env
 
+# Google Cloud credentials and secrets
+server/google-cloud-key.json
+server/*-key.json
+*.json.key
+*service-account*.json
+*credentials*.json
+ai-top-trumps-key.json
+
 # Generated files
 error images/
