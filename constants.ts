@@ -31,18 +31,18 @@ export const IMAGE_STYLES: ImageStyle[] = [
 
 export const DEFAULT_CARD_DATA: CardData = {
     id: 'preview-card',
-    title: "T-Rex",
+    title: "Spinosaurus aegyptiacus",
     series: "Dinosaurs",
-    image: `https://picsum.photos/seed/trex/732/732`,
+    image: `http://100.110.120.57:3001/example_images/Spinosaurus aegyptiacus 3x4.jpg`,
     stats: [
-        { name: "Height", value: 55 },
-        { name: "Weight", value: 72 },
-        { name: "Deadliness", value: 95 },
-        { name: "Speed", value: 60 },
-        { name: "Agility", value: 35 },
-        { name: "Ferocity", value: 98 },
+        { name: "Height", value: 85 },
+        { name: "Weight", value: 92 },
+        { name: "Deadliness", value: 88 },
+        { name: "Speed", value: 45 },
+        { name: "Agility", value: 38 },
+        { name: "Ferocity", value: 90 },
     ],
     cardNumber: 1,
     totalCards: 4,
-    rarity: 'Rare',
+    rarity: 'Epic',
 };

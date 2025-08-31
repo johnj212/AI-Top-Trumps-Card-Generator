@@ -143,10 +143,6 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 sm:p-8">
       {isLoading && <Loader message={loadingMessage} />}
-      <header className="text-center mb-8">
-        <h1 className="text-5xl md:text-6xl font-bold text-orange-500 tracking-wider" style={{fontFamily: "'Teko', sans-serif"}}>AI Top Trumps Card Generator</h1>
-        <p className="text-gray-400 mt-2">Create your own professional trading cards with the power of AI.</p>
-      </header>
       
       {error && (
         <div className="bg-red-800 border border-red-600 text-white px-4 py-3 rounded-lg relative mb-6 max-w-4xl mx-auto" role="alert">

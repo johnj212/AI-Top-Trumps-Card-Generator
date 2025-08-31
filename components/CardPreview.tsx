@@ -7,30 +7,34 @@ const CardPreview: React.FC<CardPreviewProps> = ({ cardData, colorScheme, isImag
 
   return (
     <div className={`relative w-full max-w-sm aspect-[62/100] rounded-2xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${colorScheme.background} border-4 ${colorScheme.accent}`} style={{fontFamily: "'Teko', sans-serif"}}>
-      {/* Solid Series Header Bar */}
-      <div className={`w-full ${colorScheme.primary} px-4 py-2 flex justify-between items-center`}>
-        <h2 className={`text-2xl font-bold uppercase tracking-wider text-shadow-lg whitespace-nowrap truncate pr-2`}>{series}</h2>
-        <div className="text-lg font-bold text-right flex-shrink-0">
-          <div>{cardNumber}/{totalCards}</div>
-        </div>
-      </div>
 
       {/* Rarity Display */}
       <RarityDisplay rarity={rarity} accentBorderClass={colorScheme.accent} />
 
-      {/* Image Section - fills top 70% of card */}
-      <div className="w-full bg-gray-700 overflow-hidden" style={{ height: '70%' }}>
+      {/* Image Section - fills most of the card */}
+      <div className="w-full bg-gray-700 overflow-hidden relative flex-1">
         {isImageLoading ? (
           <div className="flex items-center justify-center w-full h-full">
             <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-orange-500"></div>
           </div>
         ) : (
-          <img src={image} alt={title} className="object-cover w-full h-full" style={{ height: '100%', width: '100%' }} />
+          <>
+            <img src={image} alt={title} className="object-cover w-full h-full" style={{ height: '100%', width: '100%' }} />
+            {/* Subtle watermark overlay */}
+            <div className="absolute bottom-2 left-2 right-2 flex justify-between items-end">
+              <div className="text-white text-sm font-bold opacity-60 bg-black/30 px-2 py-1 rounded backdrop-blur-sm">
+                {series}
+              </div>
+              <div className="text-white text-sm font-bold opacity-60 bg-black/30 px-2 py-1 rounded backdrop-blur-sm">
+                {cardNumber}/{totalCards}
+              </div>
+            </div>
+          </>
         )}
       </div>
 
-      {/* Title and Stats box - fills bottom 30% of card, stats always visible */}
-      <div className="w-full flex flex-col justify-end" style={{ height: '30%' }}>
+      {/* Title and Stats box - compact bottom section */}
+      <div className="w-full flex flex-col flex-shrink-0">
         {/* Title Banner */}
         <div className={`w-full bg-gray-900 px-4 py-2 flex items-center justify-center border-t-4 border-b-4 border-orange-500`}>
           <h1 className={`${titleFontSizeClass} font-bold uppercase text-center text-white whitespace-nowrap truncate`}>{title}</h1>
@@ -98,7 +102,7 @@ const RarityDisplay: React.FC<{ rarity: Rarity, accentBorderClass: string }> = (
     textShadow: textShadow,
   } as React.CSSProperties;
   return (
-    <div className={`absolute top-14 right-2 z-10 px-2 py-0.5 bg-black/70 rounded-md border-2 ${accentBorderClass} font-roboto-condensed`}>
+    <div className={`absolute top-2 right-2 z-10 px-2 py-0.5 bg-black/70 rounded-md border-2 ${accentBorderClass} font-roboto-condensed`}>
       <div className={`flex items-center gap-2 ${config.textColor}`} style={style}>
         <span className="text-sm font-bold tracking-widest">{config.text}</span>
         <span className="text-base">{config.stars}</span>

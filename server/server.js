@@ -15,6 +15,9 @@ const port = 3001;
 app.use(cors());
 app.use(express.json());
 
+// Serve static files from example_images directory
+app.use('/example_images', express.static(path.join(__dirname, '..', 'example_images')));
+
 console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? 'Loaded' : 'Not Loaded');
 
 if (!process.env.GEMINI_API_KEY) {
@@ -43,7 +46,7 @@ app.post('/api/generate', async (req, res) => {
         config: {
           numberOfImages: 1,
           outputMimeType: 'image/jpeg',
-          aspectRatio: '1:1',
+          aspectRatio: '3:4',
         },
       });
       if (!imageResult.generatedImages || imageResult.generatedImages.length === 0) {
@@ -114,6 +117,6 @@ app.post('/api/generate', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server listening at http://0.0.0.0:${port}`);
 });
