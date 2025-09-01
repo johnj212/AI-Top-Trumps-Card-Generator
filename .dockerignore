@@ -31,7 +31,6 @@ README.md
 coverage
 .nyc_output
 *.log
-example_images/
 
 # Removed deployment files
 cloudrun.yaml
