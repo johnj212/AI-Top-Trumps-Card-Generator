@@ -1,17 +1,38 @@
+# Dependencies
 node_modules
 npm-debug.log*
 .npm
+
+# Environment files
 .env
 .env.*
+
+# JSON files (except package.json)
 *.json
 !package*.json
-!server/package*.json
+!metadata.json
+
+# Credentials and secrets
 server/google-cloud-key.json
+*service-account*.json
+*credentials*.json
+
+# System files
 .DS_Store
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+!CLAUDE.md
+
+# Development files
 coverage
 .nyc_output
 *.log
-README.md
-*.md
-.git
-.gitignore
+example_images/
+
+# Removed deployment files
+cloudrun.yaml
+docker-compose.yml

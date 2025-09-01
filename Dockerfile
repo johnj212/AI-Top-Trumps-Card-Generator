@@ -2,13 +2,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files for better Docker layer caching
 COPY package*.json ./
-COPY server/package*.json ./server/
 
-# Install dependencies for both root and server
+# Install all dependencies (including dev dependencies for build)
 RUN npm ci
-RUN cd server && npm ci
 
 # Copy source files
 COPY . .
@@ -16,12 +14,22 @@ COPY . .
 # Build the frontend
 RUN npm run build
 
-# Remove service account key file for security
-RUN rm -f server/google-cloud-key.json
+# Remove dev dependencies after build to reduce image size
+RUN npm ci --only=production && npm cache clean --force
+
+# Clean up unnecessary files for smaller image
+RUN rm -rf node_modules/.cache \
+    && rm -f server/google-cloud-key.json \
+    && rm -f .env \
+    && rm -f .env.example
 
 # Use PORT environment variable that Cloud Run provides
 ENV PORT=8080
 EXPOSE 8080
+
+# Health check for Cloud Run
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/health || exit 1
 
 # Use production command
 CMD ["npm", "run", "start"]

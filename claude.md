@@ -97,7 +97,8 @@
 * **Frontend**: React + TypeScript + Tailwind CSS (Port 8088)
 * **Backend**: Express.js + Node.js (Port 3001)
 * **AI Integration**: Google Gemini API (`@google/genai`)
-* **Deployment**: Docker + docker-compose support
+* **Production Deployment**: Google Cloud Run (europe-north1 region)
+* **Development**: Docker support for local development
 
 ### To Do List
 * Add comprehensive tests (unit, integration, e2e)
@@ -140,7 +141,18 @@
 * **Build Tool**: Vite for frontend bundling
 * **Process Management**: Concurrently for running both servers
 * **Environment**: Dotenv for API key management
-* **Containerization**: Docker with multi-stage builds
+* **Containerization**: Docker with optimized builds
+
+### Deployment
+* **Production Platform**: Google Cloud Run
+* **Region**: europe-north1 
+* **Project**: whispers-of-the-wildwood
+* **Service Name**: ai-top-trumps-card-generator
+* **Deployment Scripts**: 
+  - `./deploy.sh` - Full deployment with secret setup
+  - `./deploy-simple.sh` - Quick rebuild and redeploy
+* **Environment Variables**: Managed via Google Secret Manager
+* **Storage**: Google Cloud Storage for images and card data
 
 ### Card Generation Pipeline
 1. Theme selection triggers stat generation via AI

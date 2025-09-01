@@ -32,7 +32,6 @@ dist-ssr
 
 # Server
 server/node_modules
-server/.env
 
 # Google Cloud credentials and secrets
 server/google-cloud-key.json

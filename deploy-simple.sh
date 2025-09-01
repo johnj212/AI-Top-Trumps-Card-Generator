@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Simple Cloud Run Deployment Script (assumes secret already exists)
+# Simple Cloud Run Deployment Script (build and deploy only)
 set -e
 
 PROJECT_ID="whispers-of-the-wildwood"
@@ -8,26 +8,24 @@ SERVICE_NAME="ai-top-trumps-card-generator"
 REGION="europe-north1"
 IMAGE_NAME="gcr.io/$PROJECT_ID/$SERVICE_NAME"
 
-echo "🚀 Deploying AI Top Trumps Card Generator to Cloud Run..."
+echo "🚀 Quick Deploy AI Top Trumps Card Generator to Cloud Run..."
 
 # Set the project
 echo "📋 Setting project to $PROJECT_ID"
 gcloud config set project $PROJECT_ID
 
-# Grant the service account access to the secret (if not already done)
-echo "🔑 Granting service account access to secrets..."
-gcloud secrets add-iam-policy-binding gemini-api-key \
-    --member="serviceAccount:github-actions@$PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/secretmanager.secretAccessor" || echo "Permission already granted"
+# Build and push the container image
+echo "🏗️ Building container image..."
+gcloud builds submit --tag $IMAGE_NAME
 
-# Deploy to Cloud Run
+# Deploy to Cloud Run (assumes secrets already configured)
 echo "☁️ Deploying to Cloud Run..."
 gcloud run deploy $SERVICE_NAME \
     --image $IMAGE_NAME \
     --platform managed \
     --region $REGION \
     --service-account github-actions@$PROJECT_ID.iam.gserviceaccount.com \
-    --set-env-vars "NODE_ENV=production,STORAGE_BUCKET=cards_stroage" \
+    --set-env-vars "NODE_ENV=production,STORAGE_BUCKET=cards_storage-whispers-of-the-wildwood" \
     --set-secrets "GEMINI_API_KEY=gemini-api-key:latest" \
     --memory 2Gi \
     --cpu 2 \
