@@ -4,23 +4,29 @@
 
 A state-of-the-art AI-powered web application that generates professional-quality Top Trumps-style trading cards. Harness the power of Google's Gemini AI to create unique themes, balanced statistics, and stunning artwork for your custom card collections.
 
+🌐 **[Live Demo - Try it now!](https://ai-top-trumps-card-generator-50477513015.europe-north1.run.app)**
+
 [![React](https://img.shields.io/badge/React-19.1.1-blue)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8.2-blue)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-green)](https://nodejs.org/)
+[![Google Cloud Run](https://img.shields.io/badge/Google%20Cloud%20Run-Deployed-blue)](https://cloud.google.com/run)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue)](https://docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 ## ✨ Features
 
--   **AI-Powered Content Generation**: Utilizes `gemini-2.5-flash` to dynamically generate thematic statistics and full card packs with unique titles and values.
--   **Stunning AI Image Generation**: Leverages `imagen-3.0-generate-002` to create high-quality, custom artwork for each card based on dynamic prompts.
--   **Live Interactive Preview**: Instantly see how your card looks as you tweak series names, titles, stats, and styles.
--   **Deep Customization**:
-    -   Choose from a variety of themes (Dinosaurs, Fantasy, Automotive, etc.).
+-   **🤖 AI-Powered Content Generation**: Utilizes `gemini-2.5-flash` to dynamically generate thematic statistics and full card packs with unique titles and values.
+-   **🎨 Stunning AI Image Generation**: Leverages `imagen-3.0-generate-002` to create high-quality, custom artwork for each card based on dynamic prompts.
+-   **👀 Live Interactive Preview**: Instantly see how your card looks with a beautiful initial preview that loads immediately.
+-   **🎛️ Deep Customization**:
+    -   Choose from a variety of themes (Dinosaurs, Fantasy, Automotive, Aircraft, Pokémon).
     -   Select different color schemes to match your theme.
-    -   Apply unique image styles (Holographic, Vintage, Cyberpunk, etc.).
--   **Full Pack Generation**: Create a set of 4 unique cards, starting with your customized preview card.
--   **Optimized Image Generation**: All images generated as perfect 1:1 squares for optimal card display.
+    -   Apply unique image styles (Holographic, Vintage, Cyberpunk, Realistic, etc.).
+-   **📦 Full Pack Generation**: Create a set of 4 unique cards, starting with your customized preview card.
+-   **☁️ Cloud Storage Integration**: Persistent storage for generated images and card data via Google Cloud Storage.
+-   **⚡ Production Ready**: Deployed on Google Cloud Run with optimized performance and scalability.
+-   **📱 Mobile Optimized**: Responsive design that works perfectly on all devices.
+-   **🔄 Sequential Generation**: Reliable card-by-card generation for better success rates.
 
 ## 🚀 How to Use
 
@@ -60,33 +66,15 @@ A state-of-the-art AI-powered web application that generates professional-qualit
    ```
 
 4. **Set up your environment variables:**
-   - Create a new file named `.env` in the `server` directory.
-   - Add your Gemini API key to the `.env` file as follows:
-     ```
-     GEMINI_API_KEY=your_api_key_here
-     ```
-
-### Running the Application
-
-### 🔧 Configure Environment Variables
-
-1. **Set up server environment:**
    ```bash
-   cd server
    cp .env.example .env
    ```
    
-2. **Edit `server/.env` with your actual values:**
+5. **Edit `.env` with your actual values:**
    - `GEMINI_API_KEY`: Get from [Google AI Studio](https://aistudio.google.com/app/apikey)
-   - `STORAGE_BUCKET`: Your Google Cloud Storage bucket name
-   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to your service account key
-
-3. **Set up Google Cloud credentials:**
-   ```bash
-   cp server/google-cloud-key.json.example server/google-cloud-key.json
-   ```
-   Then replace the placeholder values with your actual Google Cloud service account key.
-   Download from [Google Cloud Console](https://console.cloud.google.com/iam-admin/serviceaccounts).
+   - `STORAGE_BUCKET`: Your Google Cloud Storage bucket name (optional for local dev)
+   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to your service account key (optional for local dev)
+   - `VITE_GEMINI_API_URL`: Should be `http://localhost:3001/api/generate` for local development
 
 ### 🚀 Start the Application
 
@@ -96,46 +84,76 @@ A state-of-the-art AI-powered web application that generates professional-qualit
   ```
 - The frontend will be available at `http://localhost:8088` and the backend at `http://localhost:3001`.
 
+## 🚀 Production Deployment
+
+The application is production-ready and deployed on Google Cloud Run.
+
+### Current Production Deployment
+- **Live URL**: https://ai-top-trumps-card-generator-50477513015.europe-north1.run.app
+- **Platform**: Google Cloud Run (europe-north1)
+- **Project**: whispers-of-the-wildwood
+- **Auto-scaling**: 0-10 instances based on demand
+
+### Deploy Your Own Instance
+
+1. **Prerequisites:**
+   - Google Cloud Project with Cloud Run and Secret Manager APIs enabled
+   - Docker and gcloud CLI installed
+   - Gemini API key
+
+2. **One-time setup (includes secrets):**
+   ```bash
+   ./deploy.sh
+   ```
+
+3. **Quick updates:**
+   ```bash
+   ./deploy-simple.sh
+   ```
+
+The deployment scripts handle:
+- Container building and registry push
+- Secret management via Google Secret Manager  
+- Cloud Run service configuration
+- Health check verification
+
 ## 🛠️ Tech Stack
 
--   **Frontend**: React, TypeScript, Tailwind CSS
--   **AI Models**:
-    -   Google Gemini API (`@google/genai`)
-    -   Text Generation: `gemini-2.5-flash`
-    -   Image Generation: `imagen-3.0-generate-002`
--   **Card Display**: Optimized CSS layout with perfect 1:1.61 aspect ratio for authentic trading card proportions.
+### Frontend
+- **React 19.1.1** with TypeScript for type-safe component development
+- **Tailwind CSS** for utility-first styling and responsive design  
+- **Vite 6.2.0** for fast development and optimized production builds
 
-## 🏗️ Technical Architecture
-
-### Frontend Stack
-- **React 19** with TypeScript for type-safe component development
-- **Tailwind CSS** for utility-first styling and responsive design
-- **Vite** for fast development and optimized production builds
-- **Custom Hooks** for state management and API integration
-
-### Backend Stack
-- **Node.js** with Express.js for robust server architecture
-- **Google Gemini API** (`@google/genai`) for AI-powered content generation
+### Backend
+- **Node.js 20** with Express.js for robust server architecture
+- **Google Cloud Storage** for persistent image and card storage
 - **CORS** enabled for cross-origin requests
-- **Dotenv** for secure environment variable management
 
 ### AI Integration
-- **Text Generation**: `gemini-2.5-flash` for statistics and card content
-- **Image Generation**: `imagen-3.0-generate-002` for high-quality artwork
+- **Google Gemini API** (`@google/genai`)
+  - **Text Generation**: `gemini-2.5-flash` for statistics and card content
+  - **Image Generation**: `imagen-3.0-generate-002` for high-quality artwork
 - **Response Processing**: Custom JSON parsing with comprehensive error handling
-- **Rate Limiting**: Built-in request throttling and timeout management
+- **Sequential Generation**: Card-by-card processing for improved reliability
+
+### Production Infrastructure  
+- **Google Cloud Run** - Serverless container platform in europe-north1
+- **Google Secret Manager** - Secure API key management
+- **Docker** - Optimized multi-stage builds with health checks
+- **Google Cloud Storage** - Persistent media storage with signed URLs
 
 ### Development Tools
-- **TypeScript** for full-stack type safety
+- **TypeScript 5.8.2** for full-stack type safety
 - **Concurrently** for running multiple development servers
-- **Docker & Docker Compose** for containerized deployment
 - **ESM Modules** for modern JavaScript imports
+- **Environment Management** - Consolidated .env configuration
 
 ### Card Rendering System
 - **Aspect Ratio**: Authentic 1:1.61 (62:100) trading card proportions
 - **Image Optimization**: 3:4 aspect ratio images optimized for card display
 - **Responsive Design**: Mobile-first approach with breakpoint optimization
 - **CSS Grid & Flexbox**: Modern layout techniques for precise positioning
+- **Rarity System**: Weighted random distribution with visual indicators
 
 ## 📁 Project Structure
 
