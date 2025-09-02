@@ -22,6 +22,11 @@ export interface Theme {
   stats: string[];
 }
 
+export interface Series {
+  name: string;
+  themes: string[];
+}
+
 export interface ColorScheme {
   name: string;
   primary: string;

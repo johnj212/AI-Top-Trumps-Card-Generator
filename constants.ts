@@ -1,14 +1,14 @@
-import type { CardData, Theme, ColorScheme, ImageStyle } from './types';
+import type { CardData, Theme, Series, ColorScheme, ImageStyle } from './types';
 
-export const SERIES_NAMES: string[] = [
-  'Ancient Legends',
-  'Modern Marvels', 
-  'Mythical Beasts',
-  'Space Explorers',
-  'Ocean Depths',
-  'Sky Warriors',
-  'Legendary Heroes',
-  'Natural Wonders'
+export const SERIES: Series[] = [
+  { name: 'Ancient Legends', themes: ['Dinosaurs', 'Fantasy'] },
+  { name: 'Modern Marvels', themes: ['Automotive', 'Aircraft'] },
+  { name: 'Mythical Beasts', themes: ['Fantasy', 'Pokémon'] },
+  { name: 'Space Explorers', themes: ['Aircraft', 'Fantasy'] },
+  { name: 'Ocean Depths', themes: ['Dinosaurs', 'Fantasy'] },
+  { name: 'Sky Warriors', themes: ['Aircraft', 'Fantasy'] },
+  { name: 'Legendary Heroes', themes: ['Fantasy', 'Pokémon'] },
+  { name: 'Natural Wonders', themes: ['Dinosaurs', 'Fantasy'] },
 ];
 
 export const THEMES: Theme[] = [
@@ -18,6 +18,15 @@ export const THEMES: Theme[] = [
   { name: 'Aircraft', stats: ['Max Speed', 'Range', 'Ceiling', 'Payload', 'Maneuverability', 'Stealth'] },
   { name: 'Fantasy', stats: ['Magic Power', 'Strength', 'Agility', 'Wisdom', 'Fear Factor', 'Defense'] },
 ];
+
+// Backward compatibility
+export const SERIES_NAMES: string[] = SERIES.map(s => s.name);
+
+// Helper function to get themes for a series
+export const getThemesForSeries = (seriesName: string): string[] => {
+  const series = SERIES.find(s => s.name === seriesName);
+  return series ? series.themes : [];
+};
 
 export const COLOR_SCHEMES: ColorScheme[] = [
   { name: 'Orange-Black', primary: 'bg-orange-500', secondary: 'bg-gray-800', background: 'bg-black', text: 'text-white', accent: 'border-orange-500' },
@@ -43,7 +52,7 @@ export const IMAGE_STYLES: ImageStyle[] = [
 export const DEFAULT_CARD_DATA: CardData = {
     id: 'preview-card',
     title: "Spinosaurus aegyptiacus",
-    series: SERIES_NAMES[0], // "Ancient Legends"
+    series: SERIES[0].name, // "Ancient Legends"
     image: `/example_images/Spinosaurus aegyptiacus 3x4.jpg`,
     stats: [
         { name: "Height", value: 85 },

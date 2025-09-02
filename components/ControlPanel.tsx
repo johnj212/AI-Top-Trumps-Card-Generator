@@ -1,7 +1,7 @@
 
 import React from 'react';
 import type { CardData, ColorScheme, ImageStyle, Statistic, Theme } from '../types';
-import { COLOR_SCHEMES, IMAGE_STYLES, THEMES, SERIES_NAMES } from '../constants';
+import { COLOR_SCHEMES, IMAGE_STYLES, THEMES, SERIES, getThemesForSeries } from '../constants';
 import { GenerateIcon, RandomizeIcon } from './icons';
 
 interface ControlPanelProps {
@@ -36,6 +36,26 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     onThemeChange
 }) => {
     
+    // Get available themes for current series
+    const availableThemes = React.useMemo(() => {
+        const themeNames = getThemesForSeries(cardData.series);
+        return THEMES.filter(theme => themeNames.includes(theme.name));
+    }, [cardData.series]);
+
+    // Handle series change and update theme if needed
+    const handleSeriesChange = (seriesName: string) => {
+        const newAvailableThemes = getThemesForSeries(seriesName);
+        const currentThemeIsValid = newAvailableThemes.includes(selectedTheme.name);
+        
+        setCardData(prev => ({ ...prev, series: seriesName }));
+        
+        // If current theme is not available in new series, switch to first available theme
+        if (!currentThemeIsValid && newAvailableThemes.length > 0) {
+            const newTheme = THEMES.find(t => t.name === newAvailableThemes[0])!;
+            onThemeChange(newTheme);
+        }
+    };
+    
     const handleStatValueChange = (index: number, value: string) => {
         const newStats = [...cardData.stats];
         newStats[index].value = Math.max(0, Math.min(100, Number(value)));
@@ -58,9 +78,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             <div className="space-y-4">
                 <div>
                     <label className="block text-lg font-bold text-gray-300 mb-1">Series</label>
-                    <select value={cardData.series} onChange={e => setCardData(p => ({...p, series: e.target.value}))} className="w-full p-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
-                        {SERIES_NAMES.map(series => (
-                            <option key={series} value={series}>{series}</option>
+                    <select value={cardData.series} onChange={e => handleSeriesChange(e.target.value)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
+                        {SERIES.map(series => (
+                            <option key={series.name} value={series.name}>
+                                {series.name} ({series.themes.join(', ')})
+                            </option>
                         ))}
                     </select>
                 </div>
@@ -78,8 +100,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                 <div>
                     <label className="block text-lg font-bold text-gray-300 mb-1">Theme</label>
                     <select value={selectedTheme.name} onChange={e => onThemeChange(THEMES.find(t => t.name === e.target.value)!)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
-                        {THEMES.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+                        {availableThemes.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
                     </select>
+                    <p className="text-xs text-gray-400 mt-1">Only themes available for the selected series are shown</p>
                 </div>
                 <div>
                     <label className="block text-lg font-bold text-gray-300 mb-1">Color Scheme</label>
