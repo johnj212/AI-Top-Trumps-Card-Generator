@@ -19,7 +19,7 @@ export interface CardData {
 
 export interface Theme {
   name: string;
-  suggestedStats: string[];
+  stats: string[];
 }
 
 export interface ColorScheme {

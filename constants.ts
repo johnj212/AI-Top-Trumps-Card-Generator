@@ -1,11 +1,22 @@
 import type { CardData, Theme, ColorScheme, ImageStyle } from './types';
 
+export const SERIES_NAMES: string[] = [
+  'Ancient Legends',
+  'Modern Marvels', 
+  'Mythical Beasts',
+  'Space Explorers',
+  'Ocean Depths',
+  'Sky Warriors',
+  'Legendary Heroes',
+  'Natural Wonders'
+];
+
 export const THEMES: Theme[] = [
-  { name: 'Automotive', suggestedStats: ['Top Speed', '0-60 MPH', 'Horsepower', 'Engine Size', 'Handling', 'Style'] },
-  { name: 'Dinosaurs', suggestedStats: ['Height', 'Weight', 'Deadliness', 'Speed', 'Agility', 'Ferocity'] },
-  { name: 'Pokémon', suggestedStats: ['HP', 'Attack', 'Defense', 'Sp. Atk', 'Sp. Def', 'Speed'] },
-  { name: 'Aircraft', suggestedStats: ['Max Speed', 'Range', 'Ceiling', 'Payload', 'Maneuverability', 'Stealth'] },
-  { name: 'Fantasy', suggestedStats: ['Magic Power', 'Strength', 'Agility', 'Wisdom', 'Fear Factor', 'Defense'] },
+  { name: 'Automotive', stats: ['Top Speed', '0-60 MPH', 'Horsepower', 'Engine Size', 'Handling', 'Style'] },
+  { name: 'Dinosaurs', stats: ['Height', 'Weight', 'Deadliness', 'Speed', 'Agility', 'Ferocity'] },
+  { name: 'Pokémon', stats: ['HP', 'Attack', 'Defense', 'Sp. Atk', 'Sp. Def', 'Speed'] },
+  { name: 'Aircraft', stats: ['Max Speed', 'Range', 'Ceiling', 'Payload', 'Maneuverability', 'Stealth'] },
+  { name: 'Fantasy', stats: ['Magic Power', 'Strength', 'Agility', 'Wisdom', 'Fear Factor', 'Defense'] },
 ];
 
 export const COLOR_SCHEMES: ColorScheme[] = [
@@ -32,7 +43,7 @@ export const IMAGE_STYLES: ImageStyle[] = [
 export const DEFAULT_CARD_DATA: CardData = {
     id: 'preview-card',
     title: "Spinosaurus aegyptiacus",
-    series: "Dinosaurs",
+    series: SERIES_NAMES[0], // "Ancient Legends"
     image: `/example_images/Spinosaurus aegyptiacus 3x4.jpg`,
     stats: [
         { name: "Height", value: 85 },
