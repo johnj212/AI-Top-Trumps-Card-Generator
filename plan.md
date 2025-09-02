@@ -779,3 +779,567 @@ Interactive HTML mockup available at: `/mobile_mockup.html`
 ---
 
 **Note**: This mobile plan maintains all existing functionality while optimizing for mobile-first experience. Desktop users will continue to have full functionality with the enhanced responsive design.
+
+---
+
+# Mobile Save Improvements Plan
+
+## Problems Identified
+1. **Popup Blockers**: Current mobile save uses `window.open()` which triggers popup blockers
+2. **Poor UX**: Users must accept popups, then manually long-press images to save
+3. **Bulk Download Issues**: Multiple popups for bulk downloads are blocked by browsers
+4. **No Native Experience**: Doesn't use modern mobile download/share capabilities
+
+## Current Implementation Issues
+
+### Bulk Download (GeneratedCardsDisplay.tsx:50)
+```typescript
+// Problem: Creates popup for each card
+if (isMobile) {
+  window.open(dataURL, '_blank');
+}
+```
+
+### Individual Card Download (cardExport.ts:266-287)
+```typescript
+// Problem: Opens new window with HTML content
+const newWindow = window.open();
+if (newWindow) {
+  newWindow.document.write(`<html>...</html>`);
+}
+```
+
+## Proposed Solutions
+
+### 1. Replace window.open() with Direct Downloads
+- Use `<a>` elements with `download` attribute and `href` containing blob URLs
+- Convert data URLs to blob URLs for better mobile compatibility
+- Eliminate popup requirements entirely
+
+### 2. Implement Web Share API
+- Add native mobile sharing experience where supported
+- Fallback to direct download for unsupported devices
+- Better integration with mobile OS sharing capabilities
+
+### 3. Improve Bulk Download UX
+- Replace multiple popups with single user-initiated sequential downloads
+- Add progress indication for bulk operations
+- Use intersection observer to trigger downloads with user interaction
+
+### 4. Enhanced Mobile Detection & Handling
+- Improve mobile device detection
+- Optimize file formats and sizes for mobile devices
+- Add touch-friendly download interactions
+
+### 5. Fallback Strategy
+- Progressive enhancement: native sharing → direct download → legacy popup method
+- Graceful degradation for older browsers
+- Clear user instructions for each method
+
+## Implementation Plan
+
+### Phase 1: Core Download Improvements
+```typescript
+// New blob-based download approach
+const downloadWithBlob = async (dataURL: string, filename: string) => {
+  const response = await fetch(dataURL);
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  
+  URL.revokeObjectURL(url);
+};
+```
+
+### Phase 2: Web Share API Integration
+```typescript
+// Native sharing for mobile
+if (navigator.share && navigator.canShare) {
+  const blob = await fetch(dataURL).then(r => r.blob());
+  const file = new File([blob], filename, { type: blob.type });
+  
+  await navigator.share({
+    title: cardData.title,
+    text: `Check out my ${cardData.series} card!`,
+    files: [file]
+  });
+}
+```
+
+### Phase 3: Sequential Bulk Downloads
+- User-initiated download queue
+- Progress indicators
+- Cancel functionality
+- Error handling and retry
+
+## Files to Modify
+- `utils/cardExport.ts`: Core download logic improvements
+- `components/GeneratedCardsDisplay.tsx`: Bulk download improvements  
+- `components/CardPreview.tsx`: Individual card download improvements
+
+## Expected Outcome
+- No more popup blockers
+- Native mobile sharing experience
+- Seamless bulk downloads
+- Better user experience across all devices
+
+## Priority: High
+This improvement directly addresses user experience issues on mobile devices and should be implemented after current security improvements are complete.
+
+---
+
+# Rate Limiting Implementation Plan
+
+## Current API Usage Analysis
+
+### API Call Patterns
+- **Preview Generation**: 2 API calls (1 text generation + 1 image generation)
+- **Pack Generation**: 8 API calls (4 text generations + 4 image generations)
+- **Single Session**: Up to 10 API calls per user per pack
+- **No Current Limits**: Users can generate unlimited packs
+
+### Endpoints Requiring Rate Limiting
+- `POST /api/generate` - Main bottleneck for both text and image generation
+- `POST /api/cards` - Card storage (less critical but should be limited)
+- `GET /api/cards` - Card retrieval (less critical)
+
+## Proposed Rate Limiting Strategy
+
+### 1. Server-Side Rate Limiting (Primary)
+**Implementation**: Express middleware using `express-rate-limit`
+
+#### Rate Limit Tiers:
+- **Per IP**: 50 requests per 15 minutes (allows ~5 complete packs)
+- **Per Session**: 20 requests per 10 minutes (allows ~2 complete packs)  
+- **Global**: 1000 requests per hour across all users
+
+#### Enhanced Limits:
+- **Image Generation**: Stricter limit (10 per 15 minutes)
+- **Text Generation**: Less strict (30 per 15 minutes)
+- **Storage Operations**: Moderate (25 per 15 minutes)
+
+### 2. Frontend Rate Limiting (Secondary)
+**Implementation**: Client-side request queue with delays
+
+#### Features:
+- Minimum 2-second delay between consecutive API calls
+- Progress indicators during rate-limited operations
+- User feedback for rate limit violations
+- Automatic retry with exponential backoff
+
+### 3. Smart Rate Limiting Features
+- **Burst Allowance**: Allow quick consecutive calls initially
+- **Rate Limit Headers**: Return remaining requests/reset time
+- **Graceful Degradation**: Queue requests instead of rejecting
+- **Admin Bypass**: Optional admin key for testing
+
+## Implementation Details
+
+### Phase 1: Basic Server-Side Rate Limiting
+```javascript
+// Add express-rate-limit dependency
+import rateLimit from 'express-rate-limit';
+
+// General API rate limiter
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // 50 requests per window
+  message: 'Too many requests, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Strict limiter for expensive operations
+const generateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20, // 20 generations per window
+  message: 'Generation rate limit exceeded. Please wait.',
+});
+```
+
+### Phase 2: Frontend Request Management
+```javascript
+// Request queue with delays
+class APIRequestQueue {
+  private queue: Array<() => Promise<any>> = [];
+  private processing = false;
+  private lastRequest = 0;
+  private minDelay = 2000; // 2 seconds between requests
+  
+  async enqueue(requestFn: () => Promise<any>) {
+    return new Promise((resolve, reject) => {
+      this.queue.push(async () => {
+        try {
+          const result = await requestFn();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      this.processQueue();
+    });
+  }
+}
+```
+
+### Phase 3: Advanced Features
+- Rate limit storage with Redis (for scaling)
+- User authentication integration
+- Dynamic rate limits based on load
+- Rate limit analytics and monitoring
+
+## Files to Modify
+
+### Backend Changes:
+- `server/package.json` - Add `express-rate-limit` dependency
+- `server/server.js` - Add rate limiting middleware
+- `server/rateLimiter.js` - New file for rate limiting configuration
+
+### Frontend Changes:
+- `services/geminiService.ts` - Add request queue and delay logic
+- `App.tsx` - Update UI to show rate limit status
+- `components/Loader.tsx` - Enhanced loading states for queued requests
+
+## Configuration Options
+
+### Environment Variables:
+```bash
+# Rate limiting configuration
+RATE_LIMIT_WINDOW_MS=900000  # 15 minutes
+RATE_LIMIT_MAX_REQUESTS=50
+RATE_LIMIT_MAX_GENERATION=20
+RATE_LIMIT_MIN_DELAY=2000    # 2 seconds
+
+# Redis configuration (optional)
+REDIS_URL=redis://localhost:6379
+```
+
+### Benefits:
+- **Cost Control**: Prevents API abuse and reduces costs
+- **Better UX**: Predictable response times
+- **Scalability**: Protects against traffic spikes
+- **Security**: Prevents DoS attacks
+- **Compliance**: Respects API provider limits
+
+### Implementation Priorities:
+1. **High**: Basic server-side rate limiting
+2. **Medium**: Frontend request queue
+3. **Low**: Advanced Redis-based storage
+
+## Expected Outcome
+- **Reduced API Costs**: Controlled usage prevents runaway costs
+- **Improved Stability**: Server protection from traffic spikes
+- **Better User Experience**: Clear feedback and queue management
+- **Enhanced Security**: Protection against abuse and DoS attacks
+
+## Priority: Medium
+Rate limiting should be implemented to control costs and improve system stability, especially important as the application scales.
+
+---
+
+# Simple Authentication System for 12-Year-Olds
+
+## Overview
+This plan outlines implementation of a simple, age-appropriate authentication system targeting 12-year-old users who may not have access to traditional authentication methods (email accounts, parental passwords, etc.).
+
+## Core Authentication Strategy: "Player Code" System
+
+### Design Philosophy
+- **No barriers to entry**: Kids can start playing immediately
+- **No personal information**: COPPA-compliant, privacy-first approach
+- **Gaming-inspired**: Familiar pattern from gaming platforms
+- **Memorable**: Easy-to-remember alphanumeric codes
+- **Parental-friendly**: Transparent, safe system parents can understand
+
+### Authentication Method: Player Codes
+- **Format**: 6-character alphanumeric codes (e.g., "TIGER7", "MAGIC3", "STAR42")
+- **Pattern**: Memorable word + number (like gaming handles)
+- **No passwords**: Single field authentication
+- **Local storage**: Remember player code on device
+- **Guest mode**: Continue without creating code
+
+## Technical Implementation Plan
+
+### Phase 1: Frontend Authentication UI
+
+#### New Components:
+1. **LoginScreen Component** (`components/LoginScreen.tsx`)
+   ```tsx
+   interface LoginScreenProps {
+     onLogin: (playerCode: string) => void;
+     onGuestMode: () => void;
+     isLoading: boolean;
+   }
+   ```
+
+2. **PlayerProfile Component** (`components/PlayerProfile.tsx`)
+   ```tsx
+   interface PlayerProfileProps {
+     playerCode: string;
+     cardCollection: CardData[];
+     stats: PlayerStats;
+     onLogout: () => void;
+   }
+   ```
+
+#### UI Design Elements:
+- **Card-themed login screen** with AI Top Trumps branding
+- **Visual player code generator** with fun suggestions
+- **"Play as Guest" option** for immediate access
+- **Parent information section** explaining safety
+
+### Phase 2: Backend Authentication System
+
+#### New API Endpoints:
+1. **Player Registration** (`POST /api/auth/register`)
+   ```javascript
+   {
+     playerCode: "TIGER7",
+     timestamp: "2025-09-02T20:00:00.000Z"
+   }
+   // Returns: { success: true, playerId: "uuid", playerCode: "TIGER7" }
+   ```
+
+2. **Player Login** (`POST /api/auth/login`) 
+   ```javascript
+   {
+     playerCode: "TIGER7"
+   }
+   // Returns: { success: true, playerId: "uuid", playerData: {...} }
+   ```
+
+3. **Player Data** (`GET /api/auth/player/:code`)
+   ```javascript
+   // Returns: { playerCode, createdAt, cardCollection, stats }
+   ```
+
+#### Authentication Flow:
+```
+1. User enters 6-character code
+2. Backend checks if code exists
+3. If exists: Return player data + JWT token
+4. If not exists: Offer to create new player
+5. Store minimal data: playerCode, createdAt, cardCollection
+```
+
+### Phase 3: Player Features
+
+#### Card Collection System:
+- **Personal collections**: Save generated cards to player account
+- **Collection viewer**: Browse previously created cards
+- **Card statistics**: Track favorites, creation dates
+- **Export options**: Download personal collection
+
+#### Simple Leaderboard:
+- **Most cards created** (this week/month)
+- **Most active players** (anonymous, show player codes only)
+- **Theme popularity** (which themes are trending)
+
+#### Achievement System (Optional):
+- **First Card**: Create your first card
+- **Theme Explorer**: Try all 5 themes
+- **Pack Master**: Generate 10 complete packs
+- **Rare Collector**: Generate 5 legendary cards
+
+### Phase 4: Privacy & Safety Features
+
+#### COPPA Compliance:
+- **No personal data collection**: Only player codes stored
+- **Parental notice**: Clear information about data usage
+- **Data deletion**: Easy account deletion process
+- **No communication**: No chat or messaging features
+
+#### Safety Measures:
+- **Content filtering**: AI-generated content monitoring
+- **Automated moderation**: Block inappropriate card titles/content
+- **Report system**: Simple reporting for any issues
+- **Clear ToS**: Simple, kid-friendly terms of service
+
+## Data Architecture
+
+### Player Data Structure:
+```typescript
+interface PlayerData {
+  id: string;                    // UUID
+  playerCode: string;            // 6-char code
+  createdAt: Date;              // Account creation
+  lastActive: Date;             // Last login
+  cardCollection: CardData[];    // Saved cards
+  stats: {
+    cardsGenerated: number;
+    favoriteTheme: string;
+    totalSessions: number;
+  };
+}
+```
+
+### Storage Strategy:
+- **Google Cloud Storage**: Player data in JSON files
+- **Local Storage**: Remember player code on device
+- **Session Storage**: Temporary session data
+- **No database needed**: Simple file-based storage
+
+## User Experience Flow
+
+### New User Journey:
+1. **Landing Screen**: "Create Player Code" or "Play as Guest"
+2. **Code Generation**: Visual tool suggests codes like "DRAGON3", "NINJA8"
+3. **First Card**: Guided tutorial to create first card
+4. **Collection**: Save card to personal collection
+5. **Return User**: Automatic login with stored code
+
+### Returning User Journey:
+1. **Auto-login**: Stored player code automatically logs in
+2. **Collection Access**: View previously created cards
+3. **Quick Generate**: Streamlined card generation
+4. **Profile View**: Simple stats and achievements
+
+## Technical Implementation Details
+
+### Files to Create:
+```
+components/
+├── auth/
+│   ├── LoginScreen.tsx         # Main login interface
+│   ├── PlayerProfile.tsx       # Profile and collection view
+│   ├── PlayerCodeGenerator.tsx # Code suggestion tool
+│   └── GuestModeNotice.tsx     # Guest mode explanation
+├── collection/
+│   ├── CardCollection.tsx      # Personal card gallery
+│   ├── CollectionStats.tsx     # Player statistics
+│   └── ExportCollection.tsx    # Export functionality
+server/
+├── auth/
+│   ├── auth.js                 # Authentication routes
+│   ├── playerStorage.js        # Player data management
+│   └── codeGenerator.js        # Player code utilities
+services/
+├── authService.ts              # Frontend auth logic
+├── playerService.ts            # Player data management
+└── collectionService.ts        # Collection management
+```
+
+### Files to Modify:
+- `App.tsx`: Add authentication state and routing
+- `server/server.js`: Add auth middleware and routes
+- `types.ts`: Add player and auth types
+- `constants.ts`: Add authentication constants
+
+## Security Considerations
+
+### Authentication Security:
+- **No passwords**: Eliminates password security issues
+- **JWT tokens**: Secure session management
+- **Rate limiting**: Prevent code guessing attacks
+- **Code expiry**: Optional expiry for inactive accounts
+
+### Content Security:
+- **AI content filtering**: Monitor generated card content
+- **Profanity filtering**: Block inappropriate words
+- **Image moderation**: Basic inappropriate image detection
+- **User reporting**: Simple reporting mechanism
+
+## Privacy Features
+
+### Data Minimization:
+- **No email addresses**: No contact information stored
+- **No real names**: Only player codes used
+- **No location data**: No geographic tracking
+- **No behavioral tracking**: Minimal analytics
+
+### Parental Controls:
+- **Clear privacy policy**: Simple explanation for parents
+- **Data deletion**: Easy account removal process
+- **Contact information**: Clear way to reach support
+- **Transparency report**: What data is collected and why
+
+## Implementation Timeline
+
+### Phase 1: Foundation (Week 1-2)
+- Basic login/logout functionality
+- Player code generation system
+- Simple player data storage
+- Guest mode implementation
+
+### Phase 2: Collections (Week 3-4) 
+- Card saving to player accounts
+- Collection viewing interface
+- Basic player statistics
+- Export functionality
+
+### Phase 3: Features (Week 5-6)
+- Simple leaderboard system
+- Achievement system (optional)
+- Enhanced player profiles
+- Collection management tools
+
+### Phase 4: Polish (Week 7-8)
+- Privacy and safety features
+- COPPA compliance review
+- Security testing
+- Parent information materials
+
+## Success Metrics
+
+### User Engagement:
+- **Registration rate**: % of users who create player codes
+- **Return rate**: % of players who return within 7 days
+- **Collection growth**: Average cards saved per player
+- **Session duration**: Time spent per authenticated session
+
+### Safety Metrics:
+- **Content flags**: Number of inappropriate content detections
+- **Parent inquiries**: Number of parent support requests
+- **Account deletions**: Rate of account removal requests
+
+## Benefits for Target Audience
+
+### For 12-Year-Olds:
+- **No complex passwords**: Just remember one simple code
+- **Gaming familiarity**: Feels like Xbox gamertags or Minecraft usernames
+- **Immediate access**: Can start playing in seconds
+- **Personal collections**: Save and show off favorite cards
+- **Achievement motivation**: Simple goals to work toward
+
+### for Parents:
+- **Transparent system**: Clear explanation of what data is stored
+- **No personal info**: Child's privacy is protected
+- **Easy supervision**: Parents can check collections
+- **Simple removal**: Delete account anytime
+- **COPPA compliant**: Meets legal requirements for child privacy
+
+## Future Enhancements (Post-MVP)
+
+### Social Features (With Safety):
+- **Friend codes**: Add friends using player codes only
+- **Card trading**: Simple trading system (no chat)
+- **Public galleries**: Opt-in sharing of best cards
+
+### Enhanced Collections:
+- **Collection themes**: Organize by themes or series
+- **Deck building**: Create custom decks from collections
+- **Print-ready exports**: High-resolution card printing
+
+### Gamification:
+- **Daily challenges**: Generate cards with specific themes
+- **Seasonal events**: Special themes for holidays
+- **Rarity tracking**: Advanced statistics on card rarities
+
+## Priority: High for Future Iterations
+This authentication system provides the foundation for enhanced user engagement while maintaining the simplicity and safety required for the target age group. Implementation should follow current security improvements and mobile optimization work.
+
+## Compliance Notes
+
+### COPPA Compliance Checklist:
+- [ ] No collection of personal information
+- [ ] Clear privacy notice for parents
+- [ ] Simple data deletion process
+- [ ] No behavioral advertising
+- [ ] No third-party data sharing
+- [ ] Parental consent mechanism (if needed)
+- [ ] Data retention policies
+- [ ] Security safeguards documentation
