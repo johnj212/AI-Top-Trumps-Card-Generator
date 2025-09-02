@@ -71,9 +71,6 @@ const CardPreview: React.FC<CardPreviewProps> = ({ cardData, colorScheme, isImag
               <div className="text-white text-sm font-bold opacity-60 bg-black/30 px-2 py-1 rounded backdrop-blur-sm text-center">
                 {series}
               </div>
-              <div className="text-white text-sm font-bold opacity-60 bg-black/30 px-2 py-1 rounded backdrop-blur-sm text-center">
-                {cardNumber}/{totalCards}
-              </div>
             </div>
           </>
         )}
