@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { saveImage, saveCard, saveLog, listCards, getStorageStats, getImageSignedUrl } from './storage.js';
+import { verifyToken } from './middleware/authMiddleware.js';
+import authRoutes from './auth/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
@@ -35,6 +37,9 @@ if (!process.env.GEMINI_API_KEY) {
 
 const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
 
+// Add authentication routes
+app.use('/api/auth', authRoutes);
+
 // Log server startup (async but non-blocking)
 saveLog('info', 'AI Top Trumps server starting', {
   port,
@@ -42,7 +47,7 @@ saveLog('info', 'AI Top Trumps server starting', {
   environment: process.env.NODE_ENV || 'development'
 }).catch(console.error);
 
-app.post('/api/generate', async (req, res) => {
+app.post('/api/generate', verifyToken, async (req, res) => {
   console.log('Request body:', req.body);
   const startTime = Date.now();
   
@@ -185,7 +190,7 @@ app.post('/api/generate', async (req, res) => {
 });
 
 // Save complete card data (called after full card generation)
-app.post('/api/cards', async (req, res) => {
+app.post('/api/cards', verifyToken, async (req, res) => {
   try {
     const cardData = req.body;
     
@@ -224,7 +229,7 @@ app.post('/api/cards', async (req, res) => {
 });
 
 // Get stored cards (with optional series filter)
-app.get('/api/cards', async (req, res) => {
+app.get('/api/cards', verifyToken, async (req, res) => {
   try {
     const { series, limit = 50 } = req.query;
     

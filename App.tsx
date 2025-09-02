@@ -1,11 +1,14 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import ControlPanel from './components/ControlPanel';
 import CardPreview from './components/CardPreview';
 import GeneratedCardsDisplay from './components/GeneratedCardsDisplay';
 import Loader from './components/Loader';
+import LoginScreen from './components/auth/LoginScreen';
+import PlayerProfile from './components/auth/PlayerProfile';
 import { generateCardIdeas, generateImage, generateStatsValues } from './services/geminiService';
-import type { CardData, ColorScheme, ImageStyle, Theme, Rarity } from './types';
+import { authService } from './services/authService';
+import type { CardData, ColorScheme, ImageStyle, Theme, Rarity, AuthState, PlayerData } from './types';
 import { COLOR_SCHEMES, DEFAULT_CARD_DATA, IMAGE_STYLES, THEMES } from './constants';
 
 const getRandomRarity = (): Rarity => {
@@ -17,6 +20,16 @@ const getRandomRarity = (): Rarity => {
 };
 
 function App() {
+  // Authentication state
+  const [authState, setAuthState] = useState<AuthState>({
+    isAuthenticated: false,
+    playerCode: undefined,
+    token: undefined
+  });
+  const [playerData, setPlayerData] = useState<PlayerData | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  // Game state
   const [cardData, setCardData] = useState<CardData>(DEFAULT_CARD_DATA);
   const [selectedTheme, setSelectedTheme] = useState<Theme>(THEMES[1]);
   const [selectedColorScheme, setSelectedColorScheme] = useState<ColorScheme>(COLOR_SCHEMES[0]);
@@ -27,6 +40,57 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  // Check for existing authentication on app load
+  useEffect(() => {
+    const initAuth = async () => {
+      if (authService.isAuthenticated()) {
+        const isValidToken = await authService.validateToken();
+        if (isValidToken) {
+          const currentPlayerData = authService.getPlayerData();
+          if (currentPlayerData) {
+            setAuthState({
+              isAuthenticated: true,
+              playerCode: currentPlayerData.playerCode,
+              token: authService.getToken()
+            });
+            setPlayerData(currentPlayerData);
+          }
+        }
+      }
+      setIsAuthLoading(false);
+    };
+
+    initAuth();
+  }, []);
+
+  // Authentication handlers
+  const handleLogin = (loginPlayerData: PlayerData) => {
+    setAuthState({
+      isAuthenticated: true,
+      playerCode: loginPlayerData.playerCode,
+      token: authService.getToken()
+    });
+    setPlayerData(loginPlayerData);
+    setError(null);
+  };
+
+  const handleLogout = () => {
+    setAuthState({
+      isAuthenticated: false,
+      playerCode: undefined,
+      token: undefined
+    });
+    setPlayerData(null);
+    // Clear game state
+    setGeneratedCards([]);
+    setPreviewCard(null);
+    setCardData(DEFAULT_CARD_DATA);
+  };
+
+  const handleAuthError = (errorMessage: string) => {
+    setError(errorMessage);
+  };
 
   const handleThemeChange = useCallback(async (theme: Theme) => {
       setSelectedTheme(theme);
@@ -141,6 +205,35 @@ function App() {
   };
 
 
+  // Show loading while checking authentication
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <Loader message="Loading..." />
+      </div>
+    );
+  }
+
+  // Show login screen if not authenticated
+  if (!authState.isAuthenticated) {
+    return (
+      <>
+        <LoginScreen onLogin={handleLogin} onError={handleAuthError} />
+        
+        {error && (
+          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-800 border border-red-600 text-white px-4 py-3 rounded-lg relative z-50" role="alert">
+            <strong className="font-bold">Error:</strong>
+            <span className="block sm:inline ml-2">{error}</span>
+            <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError(null)}>
+              <svg className="fill-current h-6 w-6 text-white" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+            </span>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Show main app if authenticated
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 sm:p-8">
       {isLoading && <Loader message={loadingMessage} />}
@@ -153,6 +246,11 @@ function App() {
             <svg className="fill-current h-6 w-6 text-white" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
           </span>
         </div>
+      )}
+
+      {/* Player Profile */}
+      {playerData && (
+        <PlayerProfile playerData={playerData} onLogout={handleLogout} />
       )}
 
       <main className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">

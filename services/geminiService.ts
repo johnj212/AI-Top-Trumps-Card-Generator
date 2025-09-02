@@ -1,6 +1,7 @@
 
 import type { CardIdea, ImageStyle, Statistic } from '../types';
 import { SERIES, THEMES, IMAGE_STYLES, getThemesForSeries } from '../constants';
+import { authService } from './authService';
 
 // Input validation functions for security
 function validateSeriesName(seriesName: string): string | null {
@@ -108,9 +109,7 @@ async function callApi(prompt: string, modelName: string, customBody?: any) {
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authService.getAuthHeaders(),
         body: JSON.stringify(customBody || { prompt, modelName }),
         signal: controller.signal,
       });

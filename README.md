@@ -6,6 +6,8 @@ A state-of-the-art AI-powered web application that generates professional-qualit
 
 🌐 **[Live Demo - Try it now!](https://ai-top-trumps-card-generator-50477513015.europe-north1.run.app)**
 
+> **🔐 Authentication Required**: The application now requires a player code to access all features. This ensures secure usage and prevents unauthorized access to AI services.
+
 [![React](https://img.shields.io/badge/React-19.1.1-blue)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8.2-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green)](https://nodejs.org/)
@@ -15,6 +17,10 @@ A state-of-the-art AI-powered web application that generates professional-qualit
 
 ## ✨ Features
 
+-   **🔐 Secure Authentication**: Player code-based login system with JWT tokens for secure access control
+-   **🎮 Child-Friendly Interface**: Login screen designed specifically for 12-year-old target audience
+-   **🛡️ Protected API Access**: All AI endpoints require authentication to prevent unauthorized usage
+-   **💾 Session Management**: Persistent login state with automatic token validation
 -   **🤖 AI-Powered Content Generation**: Utilizes `gemini-2.5-flash` to dynamically generate thematic statistics and full card packs with unique titles and values.
 -   **🎨 Stunning AI Image Generation**: Leverages `imagen-3.0-generate-002` to create high-quality, custom artwork for each card based on dynamic prompts.
 -   **👀 Live Interactive Preview**: Instantly see how your card looks with a beautiful initial preview that loads immediately.
@@ -30,13 +36,14 @@ A state-of-the-art AI-powered web application that generates professional-qualit
 
 ## 🚀 How to Use
 
-1.  **Customize Basics**: Start by giving your card series a name (e.g., "Mythical Creatures") and a title for your first card (e.g., "Griffin").
-2.  **Select a Theme**: Choose a theme from the dropdown. This will automatically generate 6 relevant statistic names using AI.
-3.  **Choose a Style**: Select a Color Scheme and an Image Style that best fits your vision.
-4.  **Tweak Stats**: Adjust the AI-generated stats or randomize them for fun.
-5.  **Generate Preview**: Click "Generate Preview Card". The AI will generate a new title, balanced stats, and a stunning image based on your settings. The live preview will update with the AI-generated result.
-6.  **Generate Full Pack**: Once you're happy with the preview card, click "Generate Full Pack". The application will generate 3 more unique cards that match your theme and style.
-7.  **View Your Cards**: All generated cards from the pack will be displayed at the bottom for you to admire and use.
+1.  **🔐 Login**: Enter your player code to access the application. Contact an admin if you need a player code.
+2.  **Customize Basics**: Start by giving your card series a name (e.g., "Mythical Creatures") and a title for your first card (e.g., "Griffin").
+3.  **Select a Theme**: Choose a theme from the dropdown. This will automatically generate 6 relevant statistic names using AI.
+4.  **Choose a Style**: Select a Color Scheme and an Image Style that best fits your vision.
+5.  **Tweak Stats**: Adjust the AI-generated stats or randomize them for fun.
+6.  **Generate Preview**: Click "Generate Preview Card". The AI will generate a new title, balanced stats, and a stunning image based on your settings. The live preview will update with the AI-generated result.
+7.  **Generate Full Pack**: Once you're happy with the preview card, click "Generate Full Pack". The application will generate 3 more unique cards that match your theme and style.
+8.  **View Your Cards**: All generated cards from the pack will be displayed at the bottom for you to admire and use.
 
 ## 🛠️ Getting Started
 
@@ -237,8 +244,51 @@ PORT=3001
 
 ## 🔧 API Reference
 
+### Authentication Endpoints
+
+#### POST `/api/auth/login`
+Authenticate with player code and receive JWT token
+
+**Request Body:**
+```json
+{
+  "playerCode": "TIGER34"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "playerData": {
+    "playerCode": "TIGER34",
+    "createdAt": "2025-09-02T18:24:52.142Z",
+    "lastActive": "2025-09-02T18:24:52.142Z"
+  }
+}
+```
+
+#### GET `/api/auth/validate`
+Validate existing JWT token
+
+**Headers:**
+```
+Authorization: Bearer <jwt-token>
+```
+
+### Protected Endpoints
+
 ### POST `/api/generate`
 Generate AI content for cards
+
+**🔐 Authentication Required**: This endpoint requires a valid JWT token in the Authorization header.
+
+**Headers:**
+```
+Authorization: Bearer <jwt-token>
+Content-Type: application/json
+```
 
 **Request Body:**
 ```json

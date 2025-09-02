@@ -46,3 +46,26 @@ export interface CardIdea {
   stats: Statistic[];
   imagePrompt: string;
 }
+
+export interface PlayerData {
+  playerCode: string;
+  createdAt: string;
+  lastActive: string;
+}
+
+export interface AuthState {
+  isAuthenticated: boolean;
+  playerCode?: string;
+  token?: string;
+}
+
+export interface LoginRequest {
+  playerCode: string;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  token?: string;
+  playerData?: PlayerData;
+  error?: string;
+}

@@ -1,11 +1,21 @@
 
 # Gemini API Integration Reference (Locked Design)
 
+## 🔐 AUTHENTICATION REQUIRED
+
+**IMPORTANT**: As of September 2025, all API endpoints require authentication. Users must log in with a valid player code before accessing any AI features.
+
+- **Login Required**: All users must authenticate via `/api/auth/login` before using the application
+- **Player Code**: Currently set to `TIGER34` (configurable in `server/middleware/authMiddleware.js`)
+- **Token Required**: All API requests must include `Authorization: Bearer <token>` header
+- **Session Duration**: JWT tokens expire after 24 hours
+
 ## Backend API Contract
 
 - All Gemini API calls are made from the backend (`server/server.js`).
-- The backend exposes a single endpoint: `/api/generate`.
+- The backend exposes a single endpoint: `/api/generate` (PROTECTED - requires authentication).
 - Requests must include:
+    - `Authorization: Bearer <jwt-token>` header (REQUIRED)
     - `prompt`: The prompt string for Gemini.
     - `modelName`: The Gemini model to use (`gemini-2.5-flash` for text/stats, `imagen-3.0-generate-002` for images).
 
@@ -66,6 +76,10 @@
 - Always test both stats and image generation after any change.
 
 ## Recent Development History
+* ✅ **Player Code Authentication System** - Implemented JWT-based login with player code "TIGER34" (Sep 2025)
+* ✅ **API Security Protection** - All `/api/generate` and `/api/cards` endpoints now require authentication
+* ✅ **Child-Friendly Login UI** - Gaming-themed login screen designed for 12-year-old users
+* ✅ **Session Management** - Automatic token validation and persistent login state
 * ✅ **Production Deployment** - Successfully deployed to Google Cloud Run (europe-north1)
 * ✅ **Cloud Storage Integration** - Added Google Cloud Storage for persistent image and card storage
 * ✅ **Environment Consolidation** - Unified .env configuration for better deployment management
@@ -78,6 +92,10 @@
 ## Current Project Status
 
 ### Completed Features
+* ✅ **Player Code Authentication System** - Secure JWT-based login with player code authentication
+* ✅ **Protected API Access** - All AI endpoints require valid authentication tokens
+* ✅ **Child-Friendly Security** - Login system designed for 12-year-old target audience
+* ✅ **Session Management** - Persistent login state with automatic token validation
 * ✅ **AI-powered card content generation** using `gemini-2.5-flash`
 * ✅ **AI image generation** using `imagen-3.0-generate-002`
 * ✅ **Live interactive preview system** with immediate initial preview
