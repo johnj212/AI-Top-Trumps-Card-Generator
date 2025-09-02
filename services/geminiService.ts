@@ -1,6 +1,80 @@
 
 import type { CardIdea, ImageStyle, Statistic } from '../types';
+import { SERIES_NAMES, THEMES, IMAGE_STYLES } from '../constants';
 
+// Input validation functions for security
+function validateSeriesName(seriesName: string): string | null {
+  return SERIES_NAMES.includes(seriesName) ? seriesName : null;
+}
+
+function validateThemeName(themeName: string): string | null {
+  return THEMES.find(t => t.name === themeName)?.name || null;
+}
+
+function validateImageStyleName(styleName: string): string | null {
+  return IMAGE_STYLES.find(s => s.name === styleName)?.name || null;
+}
+
+function validateStatName(statName: string): boolean {
+  return typeof statName === 'string' && 
+         statName.trim().length > 0 && 
+         statName.length <= 50 && 
+         /^[a-zA-Z0-9\s\-\.]+$/.test(statName);
+}
+
+function validateCardTitle(title: string): boolean {
+  return typeof title === 'string' && 
+         title.trim().length > 0 && 
+         title.length <= 100 && 
+         /^[a-zA-Z0-9\s\-\.\(\)\'\"]+$/.test(title);
+}
+
+function buildSecureCardPrompt(themeName: string, imageStyleName: string, statNames: string, count: number, exclusionClause: string, pluralClause: string): string {
+  const themeTemplates = {
+    'Automotive': `Generate ${count} unique automotive vehicle concept${pluralClause}${exclusionClause}. Focus on cars, motorcycles, or other vehicles with realistic performance characteristics.`,
+    'Dinosaurs': `Generate ${count} unique prehistoric dinosaur species concept${pluralClause}${exclusionClause}. Focus on scientifically plausible dinosaur characteristics.`,
+    'Pokémon': `Generate ${count} unique fictional creature concept${pluralClause}${exclusionClause}. Focus on balanced battle statistics typical of collectible creature games.`,
+    'Aircraft': `Generate ${count} unique aircraft concept${pluralClause}${exclusionClause}. Focus on planes, helicopters, or other flying vehicles with realistic performance data.`,
+    'Fantasy': `Generate ${count} unique fantasy creature or character concept${pluralClause}${exclusionClause}. Focus on magical beings with balanced fantasy attributes.`
+  };
+  
+  const imageStyleTemplates = {
+    'Holographic Foil Effect': 'holographic foil effect art, shimmering, iridescent, vibrant, detailed',
+    'Vintage Trading Card': 'vintage trading card illustration, retro style, aged paper texture, classic comic art',
+    'Neon Cyberpunk': 'neon cyberpunk digital art, glowing lights, futuristic city background, high contrast',
+    'Highly Realistic': 'highly realistic photo, 4k, cinematic lighting, detailed texture, professional photography',
+    'Blueprint Schematic': 'blueprint technical schematic, white lines on blue background, detailed annotations, engineering diagram',
+    'Pop Art Comic Book': 'pop art comic book style, bold outlines, Ben-Day dots, vibrant primary colors',
+    'Minimalist Geometric': 'minimalist geometric design, clean lines, simple shapes, abstract representation',
+    'Retro 80s Synthwave': 'retro 80s synthwave aesthetic, neon grids, sunset background, vibrant pinks and purples',
+    'Watercolor Artistic': 'artistic watercolor rendering, soft edges, beautiful color blending, expressive brushstrokes',
+    'Steampunk Mechanical': 'steampunk mechanical illustration, gears, cogs, brass and copper details, intricate machinery'
+  };
+  
+  const themePrompt = themeTemplates[themeName as keyof typeof themeTemplates] || themeTemplates['Fantasy'];
+  const stylePrompt = imageStyleTemplates[imageStyleName as keyof typeof imageStyleTemplates] || imageStyleTemplates['Highly Realistic'];
+  
+  return `You are a creative assistant for a Top Trumps card game. ${themePrompt} For each card, provide a compelling title and assign balanced, thematic values between 1 and 100 for these statistics: ${statNames}. The values should be plausible for the card's title. Also, create a detailed, visually rich prompt for an AI image generator using this style: ${stylePrompt}. The image must feature ONLY the single subject from the card's title, isolated or in a simple environment, without other creatures or characters.
+
+Return ONLY valid JSON with no additional text. Use this exact format:
+${count === 1 ? `{
+  "title": "Card Title",
+  "stats": {
+    "stat1": 85,
+    "stat2": 72
+  },
+  "imagePrompt": "Detailed image description..."
+}` : `[
+  {
+    "title": "Card Title 1", 
+    "stats": {
+      "stat1": 85,
+      "stat2": 72
+    },
+    "imagePrompt": "Detailed image description..."
+  }
+]`}`;
+}
 
 const DEFAULT_DEV_API_URL = 'http://localhost:3001/api/generate';
 
@@ -81,83 +155,42 @@ async function callApi(prompt: string, modelName: string, customBody?: any) {
   throw lastError || new Error('API call failed after retries');
 }
 
-export async function generateStatsForTheme(theme: string): Promise<Statistic[]> {
-  try {
-    const prompt = `Based on the theme "${theme}", generate exactly 6 thematically appropriate statistic names for a Top Trumps style trading card game. 
-
-IMPORTANT: You must respond with valid JSON only. Return a JSON array of exactly 6 strings with this structure:
-["Stat Name 1", "Stat Name 2", "Stat Name 3", "Stat Name 4", "Stat Name 5", "Stat Name 6"]
-
-Examples for 'Dinosaurs' could be ["Height", "Weight", "Deadliness", "Speed", "Agility", "Ferocity"].
-Do not include any text before or after the JSON array.`;
-    const jsonText = await callApi(prompt, "gemini-2.5-flash");
-    let stats: any;
-    try {
-      stats = JSON.parse(jsonText);
-    } catch (e) {
-      console.error("Failed to parse stats JSON:", e, "Raw response:", jsonText);
-      return [];
-    }
-
-    // Handle backend response shape { kind: 'json', data: [...] }
-    if (stats && typeof stats === 'object' && stats.kind === 'json' && Array.isArray(stats.data)) {
-      stats = stats.data;
-    }
-
-    if (!Array.isArray(stats)) {
-      console.warn("Stats is not an array, returning empty array. Raw response:", stats);
-      // Fallback: if stats is an object with keys, use keys as stat names
-      if (stats && typeof stats === 'object') {
-        const keys = Object.keys(stats);
-        if (keys.length > 0) {
-          console.warn("Fallback: using object keys as stat names:", keys);
-          return keys.map(name => ({
-            name,
-            value: Math.floor(Math.random() * 91) + 10
-          }));
-        }
-      }
-      return [];
-    }
-
-    // Only map/filter valid entries (name must be string)
-    return stats
-      .filter((name: any) => typeof name === 'string')
-      .map((name: string) => ({
-        name: name,
-        value: Math.floor(Math.random() * 91) + 10
-      }));
-
-  } catch (error) {
-    console.error("Error generating stats for theme:", error);
-    throw new Error("Failed to generate statistics. Please check your API key and try again.");
+export async function generateStatsValues(statNames: string[]): Promise<Statistic[]> {
+  const validatedStatNames = statNames.filter(name => 
+    typeof name === 'string' && 
+    name.trim().length > 0 && 
+    name.length <= 50 && 
+    /^[a-zA-Z0-9\s\-\.]+$/.test(name)
+  );
+  
+  if (validatedStatNames.length === 0) {
+    console.warn("No valid stat names provided, generating random values");
+    return [];
   }
+
+  return validatedStatNames.map(name => ({
+    name,
+    value: Math.floor(Math.random() * 91) + 10
+  }));
 }
 
-export async function generateCardIdeas(seriesName: string, theme: string, imageStyle: ImageStyle, stats: Statistic[], count: number, excludeTitle?: string): Promise<CardIdea[]> {
-  const statNames = stats.map(s => s.name).join(', ');
-  const exclusionClause = excludeTitle ? ` that are different from "${excludeTitle}"` : '';
-  const pluralClause = count > 1 ? 's' : '';
-  const prompt = `You are a creative assistant for a Top Trumps card game. The game's series is called "${seriesName}". Based on the theme of "${theme}", generate ${count} unique and creative card concept${pluralClause}${exclusionClause}. For each card, provide a compelling title and assign balanced, thematic values between 1 and 100 for the following statistics: ${statNames}. The values should be plausible for the card's title. Also, create a detailed, visually rich prompt for an AI image generator to create an image for this card in a "${imageStyle.name}" style. Crucially, the image must feature ONLY the single subject from the card's title, isolated or in a simple environment, without other creatures or characters. The prompt should be creative and describe a dynamic scene focusing on that single subject. 
-
-Return ONLY valid JSON with no additional text. Use this exact format:
-${count === 1 ? `{
-  "title": "Card Title",
-  "stats": {
-    "${statNames.split(', ')[0]}": 85,
-    "${statNames.split(', ')[1]}": 72
-  },
-  "imagePrompt": "Detailed image description..."
-}` : `[
-  {
-    "title": "Card Title 1", 
-    "stats": {
-      "${statNames.split(', ')[0]}": 85,
-      "${statNames.split(', ')[1]}": 72
-    },
-    "imagePrompt": "Detailed image description..."
+export async function generateCardIdeas(seriesName: string, themeName: string, imageStyle: ImageStyle, stats: Statistic[], count: number, excludeTitle?: string): Promise<CardIdea[]> {
+  // Validate and sanitize inputs
+  const validatedSeriesName = validateSeriesName(seriesName);
+  const validatedThemeName = validateThemeName(themeName);
+  const validatedImageStyleName = validateImageStyleName(imageStyle.name);
+  const validatedStats = stats.filter(stat => validateStatName(stat.name));
+  
+  if (!validatedSeriesName || !validatedThemeName || !validatedImageStyleName || validatedStats.length === 0) {
+    throw new Error("Invalid input parameters for card generation");
   }
-]`}`;
+  
+  const statNames = validatedStats.map(s => s.name).join(', ');
+  const exclusionClause = excludeTitle && validateCardTitle(excludeTitle) ? ` that are different from the previous card` : '';
+  const pluralClause = count > 1 ? 's' : '';
+  
+  // Use safe, pre-validated template without direct interpolation
+  const prompt = buildSecureCardPrompt(validatedThemeName, validatedImageStyleName, statNames, count, exclusionClause, pluralClause);
 
   try {
     const jsonText = await callApi(prompt, "gemini-2.5-flash");
@@ -271,6 +304,11 @@ ${count === 1 ? `{
 }
 
 export async function generateImage(prompt: string): Promise<string> {
+  // Validate image prompt for security
+  if (!validateImagePrompt(prompt)) {
+    throw new Error("Invalid image prompt provided");
+  }
+  
   try {
     const responseText = await callApi(prompt, 'imagen-3.0-generate-002');
     let responseObj;
@@ -290,4 +328,12 @@ export async function generateImage(prompt: string): Promise<string> {
     console.error("Error generating image:", error);
     throw new Error("Failed to generate image. The model may have safety restrictions. Please try a different prompt.");
   }
+}
+
+function validateImagePrompt(prompt: string): boolean {
+  return typeof prompt === 'string' && 
+         prompt.trim().length > 0 && 
+         prompt.length <= 2000 && 
+         // Allow more characters for image prompts but still restrict dangerous patterns
+         !/[<>{}[\]\\`|&$;(){}]/.test(prompt);
 }

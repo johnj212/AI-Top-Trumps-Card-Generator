@@ -177,3 +177,4 @@
 
 ## Rules
 * Do not mention claude code in and comments or commits.
+* run linter before commit

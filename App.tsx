@@ -4,7 +4,7 @@ import ControlPanel from './components/ControlPanel';
 import CardPreview from './components/CardPreview';
 import GeneratedCardsDisplay from './components/GeneratedCardsDisplay';
 import Loader from './components/Loader';
-import { generateCardIdeas, generateImage, generateStatsForTheme } from './services/geminiService';
+import { generateCardIdeas, generateImage, generateStatsValues } from './services/geminiService';
 import type { CardData, ColorScheme, ImageStyle, Theme, Rarity } from './types';
 import { COLOR_SCHEMES, DEFAULT_CARD_DATA, IMAGE_STYLES, THEMES } from './constants';
 
@@ -31,12 +31,13 @@ function App() {
   const handleThemeChange = useCallback(async (theme: Theme) => {
       setSelectedTheme(theme);
       setIsLoading(true);
-      setLoadingMessage(`Getting stats for ${theme.name}...`);
+      setLoadingMessage(`Setting up ${theme.name} stats...`);
       try {
-          const newStats = await generateStatsForTheme(theme.name);
+          // Use predefined stats from the theme, generate only the values
+          const newStats = await generateStatsValues(theme.stats);
           setCardData(prev => ({
               ...prev,
-              series: theme.name,
+              series: prev.series, // Keep current series, don't change it to theme name
               stats: newStats
           }));
           setPreviewCard(null); // Reset preview when theme changes
