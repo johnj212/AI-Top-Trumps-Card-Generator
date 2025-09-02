@@ -98,8 +98,25 @@ export async function saveLog(logLevel, message, metadata = {}) {
     
     const file = bucket.file(fileName);
     
-    // Append to existing log file
-    await file.save(JSON.stringify(logEntry) + '\n', {
+    // Check if file exists and read existing content for true append behavior
+    let existingContent = '';
+    try {
+      const [exists] = await file.exists();
+      if (exists) {
+        const [content] = await file.download();
+        existingContent = content.toString();
+      }
+    } catch (downloadError) {
+      // If we can't read the existing file, start fresh
+      console.warn(`⚠️ Could not read existing log file ${fileName}, starting fresh:`, downloadError.message);
+      existingContent = '';
+    }
+    
+    // Append new log entry to existing content
+    const newContent = existingContent + JSON.stringify(logEntry) + '\n';
+    
+    // Save the combined content back to the file
+    await file.save(newContent, {
       metadata: { contentType: 'application/x-ndjson' },
       resumable: false
     });

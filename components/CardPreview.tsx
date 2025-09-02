@@ -79,11 +79,11 @@ const CardPreview: React.FC<CardPreviewProps> = ({ cardData, colorScheme, isImag
       {/* Title and Stats box - compact bottom section */}
       <div className="w-full flex flex-col flex-shrink-0">
         {/* Title Banner */}
-        <div className={`w-full bg-gray-900 px-4 py-2 flex items-center justify-center border-t-4 border-b-4 border-orange-500`}>
+        <div className={`w-full bg-gray-900 px-4 py-2 flex items-center justify-center border-t-4 border-b-4 ${colorScheme.accent}`}>
           <h1 className={`${titleFontSizeClass} font-bold uppercase text-center text-white whitespace-nowrap truncate`}>{title}</h1>
         </div>
         {/* Stats - 2 columns, scroll if overflow */}
-        <div className="p-2 flex flex-row justify-center gap-2 bg-black border-t-0 border-orange-500 overflow-y-auto" style={{ maxHeight: 'calc(100% - 2.5rem)' }}>
+        <div className={`p-2 flex flex-row justify-center gap-2 bg-black border-t-0 ${colorScheme.accent} overflow-y-auto`} style={{ maxHeight: 'calc(100% - 2.5rem)' }}>
           <div className="flex flex-col space-y-1 w-1/2">
             {stats.slice(0, 3).map((stat, index) => (
               <div key={index} className="grid grid-cols-5 gap-1 items-center text-xs">
