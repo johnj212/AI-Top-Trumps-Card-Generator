@@ -118,8 +118,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                 </div>
             </div>
 
-            {/* Statistics Editor */}
-            <div>
+            {/* Statistics Editor - Hidden but functionality preserved */}
+            <div style={{ display: 'none' }}>
                 <div className="flex justify-between items-center mb-2">
                     <h3 className="text-2xl font-bold text-gray-300">Statistics</h3>
                     <button onClick={handleRandomizeStats} className="flex items-center gap-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded transition-colors text-sm">
@@ -150,6 +150,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                     onClick={onGeneratePack} 
                     disabled={isLoading || !isPreviewGenerated} 
                     className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-orange-600 hover:bg-orange-700 rounded-lg text-xl font-bold transition-all duration-200 disabled:bg-gray-500 disabled:cursor-not-allowed transform hover:scale-105"
+                    style={{ display: 'none' }}
                 >
                     <GenerateIcon className="w-7 h-7" />
                     Generate Full Pack (3 more)

@@ -452,3 +452,330 @@ git revert HEAD  # Rollback last commit
 This security and architecture improvement plan eliminates all prompt injection vulnerabilities while improving performance, user experience, and system maintainability. The changes are backward compatible and can be implemented incrementally with low risk of disruption to the production service.
 
 **Recommendation**: Proceed with implementation in the planned phases, starting with Phase 1 (Constants Update) and Phase 2 (UI Security) for immediate security benefits.
+
+---
+
+# Mobile-First Design Implementation Plan
+
+## Overview
+This document outlines the plan to transform the AI Top Trumps Card Generator into a mobile-first webapp using **Option 2: Tab-Based Dual View** design pattern.
+
+## Current State Analysis
+- Desktop-focused layout with side-by-side control panel and card preview
+- Dropdown-heavy interface (Series, Theme, Color Scheme, Image Style)
+- Statistics editing UI (currently hidden)
+- Single card generation workflow
+- Responsive but not mobile-optimized
+
+## Target Mobile Design: Tab-Based Dual View
+
+### Design Philosophy
+- **Card-first experience**: Generated cards are the hero element
+- **Visual selection**: Replace dropdowns with visual theme cards and color dots
+- **Clear separation**: Customize vs Preview modes via tabs
+- **Touch-optimized**: 44px+ touch targets, thumb-friendly zones
+- **Progressive disclosure**: Show relevant options when needed
+
+### Layout Structure
+```
+┌─────────────────────────────────┐
+│ [Customize] [Preview]           │ ← Tab navigation
+├─────────────────────────────────┤
+│                                 │
+│ TAB 1: Customize Mode           │
+│ - Visual theme grid (3x2)       │
+│ - Color scheme dots             │
+│ - Image style selector          │
+│ - Generate Preview button       │
+│                                 │
+├─────────────────────────────────┤
+│ TAB 2: Preview Mode             │
+│ - Large card display            │
+│ - Action buttons bottom         │
+│ - [Customize] [Generate New]    │
+│                                 │
+└─────────────────────────────────┘
+```
+
+## Implementation Phases
+
+### Phase 1: Mobile Layout Foundation
+**Goal**: Convert existing layout to mobile-first responsive design
+
+#### Tasks:
+1. **Add Tailwind responsive classes**
+   - Stack layout vertically on mobile (`flex-col md:flex-row`)
+   - Full-width components on mobile
+   - Larger touch targets (min-h-11, min-h-12)
+
+2. **Implement tab navigation**
+   - Create `MobileTabNavigation` component
+   - State management for active tab
+   - Smooth transitions between tabs
+
+3. **Mobile viewport optimization**
+   - Update meta viewport settings
+   - Test on actual mobile devices
+   - Adjust font sizes for mobile (16px minimum)
+
+#### Files to Modify:
+- `App.tsx`: Add mobile layout logic
+- `components/ControlPanel.tsx`: Add responsive classes
+- `components/CardPreview.tsx`: Mobile card sizing
+- Create `components/MobileTabNavigation.tsx`
+
+### Phase 2: Visual Selection Interface
+**Goal**: Replace dropdowns with visual, touch-friendly selection
+
+#### Tasks:
+1. **Theme selection cards**
+   ```tsx
+   const ThemeCard = ({ theme, selected, onSelect }) => (
+     <div className={`
+       bg-gray-800 rounded-lg p-4 text-center cursor-pointer
+       ${selected ? 'border-2 border-orange-500 bg-orange-900/20' : 'border-2 border-transparent'}
+       min-h-[80px] flex flex-col items-center justify-center
+     `} onClick={onSelect}>
+       <div className="text-2xl mb-1">{getThemeEmoji(theme)}</div>
+       <div className="text-sm font-medium">{theme.name}</div>
+     </div>
+   );
+   ```
+
+2. **Color scheme dots**
+   ```tsx
+   const ColorDot = ({ scheme, selected, onSelect }) => (
+     <div 
+       className={`
+         w-8 h-8 rounded-full cursor-pointer
+         ${selected ? 'ring-2 ring-orange-500 ring-offset-2 ring-offset-gray-900' : ''}
+       `}
+       style={{ background: `linear-gradient(45deg, ${scheme.primary}, ${scheme.secondary})` }}
+       onClick={onSelect}
+     />
+   );
+   ```
+
+3. **Series integration with theme filtering**
+   - Visual series selector (could be horizontal scroll cards)
+   - Auto-filter themes based on series selection
+   - Smooth transitions when themes change
+
+#### New Components:
+- `components/mobile/ThemeSelector.tsx`
+- `components/mobile/ColorSchemeSelector.tsx`
+- `components/mobile/SeriesSelector.tsx`
+
+### Phase 3: Enhanced Card Display
+**Goal**: Optimize card viewing experience for mobile
+
+#### Tasks:
+1. **Full-screen card preview**
+   - Larger card sizing on mobile
+   - Better aspect ratio utilization
+   - Swipe gestures for multiple cards (future)
+
+2. **Loading states optimization**
+   - Replace spinners with skeleton screens
+   - Card-shaped loading placeholders
+   - Progressive image loading
+
+3. **Card interaction improvements**
+   - Tap to expand card details
+   - Long press for options menu
+   - Smooth animations
+
+#### Files to Modify:
+- `components/CardPreview.tsx`: Mobile card sizing logic
+- `components/Loader.tsx`: Skeleton screen implementation
+- Add gesture handling library (optional)
+
+### Phase 4: Navigation and UX Polish
+**Goal**: Complete mobile-native experience
+
+#### Tasks:
+1. **Bottom navigation bar** (optional enhancement)
+   - Sticky bottom buttons for primary actions
+   - Quick access to generate, customize, save
+
+2. **Micro-interactions**
+   - Button press animations
+   - Tab switch transitions
+   - Card generation feedback
+   - Haptic feedback (where supported)
+
+3. **Accessibility improvements**
+   - ARIA labels for touch elements
+   - Screen reader support
+   - Keyboard navigation fallbacks
+   - Color contrast validation
+
+4. **Performance optimization**
+   - Code splitting for mobile bundle
+   - Image lazy loading
+   - Reduce bundle size for mobile
+
+## Technical Implementation Details
+
+### Responsive Breakpoints
+```css
+/* Mobile First Approach */
+.mobile { /* Default: < 768px */ }
+.tablet { @media (min-width: 768px) }
+.desktop { @media (min-width: 1024px) }
+```
+
+### State Management Updates
+```tsx
+// Add mobile-specific state
+const [mobileActiveTab, setMobileActiveTab] = useState<'customize' | 'preview'>('customize');
+const [isMobile, setIsMobile] = useState(false);
+
+// Detect mobile viewport
+useEffect(() => {
+  const checkMobile = () => setIsMobile(window.innerWidth < 768);
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+  return () => window.removeEventListener('resize', checkMobile);
+}, []);
+```
+
+### Component Structure
+```
+components/
+├── mobile/
+│   ├── MobileTabNavigation.tsx
+│   ├── ThemeSelector.tsx
+│   ├── ColorSchemeSelector.tsx
+│   ├── SeriesSelector.tsx
+│   └── MobileCardDisplay.tsx
+├── ControlPanel.tsx (updated with mobile logic)
+├── CardPreview.tsx (responsive updates)
+└── App.tsx (mobile layout orchestration)
+```
+
+## Design System Updates
+
+### Mobile-First Color Palette
+- Primary: `#f97316` (orange-500) - maintain brand
+- Secondary: `#0d9488` (teal-600) - for generate buttons
+- Background: `#1a1a1a` (gray-900) - dark theme
+- Cards: `#2a2a2a` (gray-800) - elevated surfaces
+- Borders: `#444444` (gray-600) - subtle divisions
+
+### Typography Scale (Mobile)
+- Headers: `text-xl` (20px) - tab titles
+- Body: `text-base` (16px) - minimum readable size
+- Labels: `text-sm` (14px) - form labels
+- Captions: `text-xs` (12px) - card stats
+
+### Touch Target Sizes
+- Primary buttons: `min-h-12` (48px)
+- Secondary buttons: `min-h-11` (44px)
+- Theme cards: `min-h-20` (80px)
+- Color dots: `w-8 h-8` (32px)
+
+## Testing Plan
+
+### Device Testing Matrix
+- **iPhone SE** (375px) - Smallest modern mobile
+- **iPhone 12/13** (390px) - Common iOS size
+- **Samsung Galaxy S21** (360px) - Common Android size
+- **iPad Mini** (768px) - Tablet breakpoint
+- **Desktop** (1024px+) - Ensure no regression
+
+### User Flow Testing
+1. **First-time user flow**
+   - Land on customize tab
+   - Select theme visually
+   - Generate first card
+   - Switch to preview tab
+
+2. **Power user flow**
+   - Quick theme switching
+   - Rapid generation cycles
+   - Multiple card comparison
+
+### Performance Benchmarks
+- **Mobile bundle size**: < 500KB gzipped
+- **Time to Interactive**: < 3 seconds on 3G
+- **Card generation time**: < 10 seconds end-to-end
+
+## Future Enhancements (Post-MVP)
+
+### Gesture Support
+- Swipe between generated cards
+- Pull-to-refresh for new generation
+- Pinch to zoom on card details
+
+### Advanced Features
+- Card favorites/collections
+- Share generated cards
+- Offline generation (cached themes)
+- Progressive Web App (PWA) capabilities
+
+### Analytics Integration
+- Track mobile vs desktop usage
+- Popular theme combinations
+- Generation completion rates
+- User flow analysis
+
+## Success Metrics
+
+### User Experience
+- **Reduced clicks to generate**: Desktop 4+ clicks → Mobile 2-3 taps
+- **Increased generation rate**: Target 50% more cards generated per session
+- **Mobile bounce rate**: < 30% (currently unknown)
+
+### Technical Performance
+- **Mobile Lighthouse score**: > 90
+- **Core Web Vitals**: All green
+- **Cross-browser compatibility**: iOS Safari, Chrome Mobile, Firefox Mobile
+
+## Implementation Timeline
+
+### Week 1-2: Phase 1 (Foundation)
+- Mobile layout conversion
+- Tab navigation implementation
+- Basic responsive testing
+
+### Week 3-4: Phase 2 (Visual Interface)
+- Theme selector cards
+- Color scheme dots
+- Series integration
+
+### Week 5-6: Phase 3 (Card Display)
+- Enhanced card preview
+- Loading state improvements
+- Mobile card interactions
+
+### Week 7-8: Phase 4 (Polish)
+- Navigation improvements
+- Micro-interactions
+- Performance optimization
+- Cross-device testing
+
+## Resources and References
+
+### Design Inspiration
+- Instagram Stories interface pattern
+- Mobile gaming card collection UIs
+- Material Design mobile patterns
+- iOS Human Interface Guidelines
+
+### Technical References
+- Tailwind CSS responsive design
+- React mobile gesture libraries
+- Mobile performance best practices
+- PWA implementation guides
+
+## Mockup Reference
+Interactive HTML mockup available at: `/mobile_mockup.html`
+- Demonstrates both tab states
+- Shows visual theme selection
+- Illustrates card display optimization
+- Interactive elements for testing concepts
+
+---
+
+**Note**: This mobile plan maintains all existing functionality while optimizing for mobile-first experience. Desktop users will continue to have full functionality with the enhanced responsive design.
