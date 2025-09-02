@@ -338,6 +338,6 @@ function validateImagePrompt(prompt: string): boolean {
   return typeof prompt === 'string' && 
          prompt.trim().length > 0 && 
          prompt.length <= 2000 && 
-         // Allow more characters for image prompts but still restrict dangerous patterns
-         !/[<>{}[\]\\`|&$;(){}]/.test(prompt);
+         // Allow common image prompt characters but restrict only truly dangerous patterns
+         !/[<>`|;&$]/.test(prompt);
 }
