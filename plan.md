@@ -1488,3 +1488,10 @@ This restructuring should be implemented soon to prevent future deployment confu
 
 ## Implementation Date: TBD
 Waiting for appropriate maintenance window to restructure deployment scripts without disrupting current workflows.
+
+---
+# Priority 2 - Libary not working 
+## Error
+  - Failed to load cards from storage)
+## Priority 3 - hide generate multiple cards again
+  - generate full pack (3 more)
