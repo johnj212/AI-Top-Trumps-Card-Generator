@@ -1387,3 +1387,104 @@ This authentication system provides the foundation for enhanced user engagement 
 - [ ] Parental consent mechanism (if needed)
 - [ ] Data retention policies
 - [ ] Security safeguards documentation
+
+---
+
+# PRIORITY 1 - Deployment Script Restructuring Plan
+
+## Problem Identified
+Current deployment scripts have ambiguous names that can cause accidental production deployments:
+- `deploy.sh` - unclear name but actually deploys to production
+- `deploy-simple.sh` - unclear name but actually deploys to production
+
+This led to confusion where requests for "UAT" and "dev" deployments accidentally deployed to production instead.
+
+## Current Problematic Structure
+```
+deploy.sh         # AMBIGUOUS - actually production (NODE_ENV=production)
+deploy-prod.sh    # EXPLICIT - production with safeguards
+deploy-uat.sh     # EXPLICIT - UAT environment 
+deploy-simple.sh  # AMBIGUOUS - actually production (NODE_ENV=production)
+```
+
+## Proposed Solution: Explicit Environment Naming
+
+### 🗑️ Remove Ambiguous Scripts:
+1. Delete `deploy.sh` (currently deploys to production but name is confusing)
+2. Delete `deploy-simple.sh` (currently deploys to production but name is confusing)
+
+### ✅ Keep Existing Explicit Scripts:
+- `deploy-prod.sh` (production with safety confirmations and human-in-the-loop)
+- `deploy-uat.sh` (UAT environment with detailed logging and checks)
+
+### 📝 Create New Explicit Scripts:
+1. **`deploy-simple-prod.sh`** - Quick production deployment without prompts
+   - Based on current `deploy-simple.sh` 
+   - Clear production naming
+   - Same production settings (2Gi RAM, 2 CPU, production storage bucket)
+   - No safety confirmations (for automated deployments)
+
+2. **`deploy-simple-uat.sh`** - Quick UAT deployment without prompts
+   - Based on current `deploy-uat.sh` but streamlined
+   - Clear UAT naming  
+   - UAT settings (1Gi RAM, 1 CPU, UAT storage bucket)
+   - Minimal output for faster deployment
+
+## Target Deployment Structure
+```
+deploy-prod.sh         # Production with human-in-the-loop safeguards
+deploy-uat.sh          # UAT with detailed logging and checks
+deploy-simple-prod.sh  # Quick production deployment (no prompts)
+deploy-simple-uat.sh   # Quick UAT deployment (no prompts)
+```
+
+## Clear Usage Patterns
+- **Production (safe)**: `./deploy-prod.sh` - with confirmations and safety checks
+- **Production (quick)**: `./deploy-simple-prod.sh` - no prompts, for CI/CD
+- **UAT (detailed)**: `./deploy-uat.sh` - with logging and comprehensive checks
+- **UAT (quick)**: `./deploy-simple-uat.sh` - streamlined for rapid iteration
+
+## Implementation Steps
+1. **Create `deploy-simple-prod.sh`**: 
+   - Copy `deploy-simple.sh` and rename
+   - Ensure clear production settings
+   - Add header comment indicating production deployment
+
+2. **Create `deploy-simple-uat.sh`**: 
+   - Based on `deploy-uat.sh` but remove verbose logging
+   - Streamlined UAT deployment
+   - Clear UAT environment settings
+
+3. **Remove ambiguous scripts**: 
+   - Delete `deploy.sh`
+   - Delete `deploy-simple.sh`
+
+4. **Update documentation**: 
+   - Update any references in README or documentation
+   - Add comments in remaining scripts about their purpose
+
+5. **Test all scripts**: 
+   - Verify each script deploys to correct environment
+   - Test that environment variables are set correctly
+   - Confirm storage buckets and service names are correct
+
+## Benefits
+- **Prevents Environment Confusion**: Impossible to accidentally deploy to wrong environment
+- **Self-Documenting**: Script names clearly indicate target environment
+- **Maintains Flexibility**: Both quick and safe deployment options for each environment
+- **Reduces Human Error**: Clear naming eliminates guesswork
+- **Better DevOps**: Explicit scripts work better with CI/CD pipelines
+
+## Environment Mapping Reference
+| Script | Target Environment | NODE_ENV | Service Name | Storage Bucket | Resources |
+|--------|-------------------|----------|--------------|---------------|-----------|
+| `deploy-prod.sh` | Production | `production` | `ai-top-trumps-card-generator` | `cards_storage-whispers-of-the-wildwood` | 2Gi RAM, 2 CPU |
+| `deploy-simple-prod.sh` | Production | `production` | `ai-top-trumps-card-generator` | `cards_storage-whispers-of-the-wildwood` | 2Gi RAM, 2 CPU |
+| `deploy-uat.sh` | UAT | `uat` | `ai-top-trumps-card-generator-uat` | `cards_storage-uat-whispers-of-the-wildwood` | 1Gi RAM, 1 CPU |
+| `deploy-simple-uat.sh` | UAT | `uat` | `ai-top-trumps-card-generator-uat` | `cards_storage-uat-whispers-of-the-wildwood` | 1Gi RAM, 1 CPU |
+
+## Priority: High
+This restructuring should be implemented soon to prevent future deployment confusion and improve the deployment workflow for all team members.
+
+## Implementation Date: TBD
+Waiting for appropriate maintenance window to restructure deployment scripts without disrupting current workflows.

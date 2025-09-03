@@ -18,6 +18,7 @@ interface ControlPanelProps {
     isLoading: boolean;
     isPreviewGenerated: boolean;
     onThemeChange: (theme: Theme) => void;
+    onOpenLibrary?: () => void;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
@@ -33,7 +34,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     onGeneratePack,
     isLoading,
     isPreviewGenerated,
-    onThemeChange
+    onThemeChange,
+    onOpenLibrary
 }) => {
     
     
@@ -120,11 +122,22 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                     onClick={onGeneratePack} 
                     disabled={isLoading || !isPreviewGenerated} 
                     className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-orange-600 hover:bg-orange-700 rounded-lg text-xl font-bold transition-all duration-200 disabled:bg-gray-500 disabled:cursor-not-allowed transform hover:scale-105"
-                    style={{ display: 'none' }}
                 >
                     <GenerateIcon className="w-7 h-7" />
                     Generate Full Pack (3 more)
                 </button>
+                {onOpenLibrary && (
+                    <button 
+                        onClick={onOpenLibrary} 
+                        disabled={isLoading} 
+                        className="w-full flex items-center justify-center gap-3 py-2 px-4 bg-purple-600 hover:bg-purple-700 rounded-lg text-lg font-medium transition-all duration-200 disabled:bg-gray-500 disabled:cursor-not-allowed transform hover:scale-105"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        Open Card Library
+                    </button>
+                )}
             </div>
         </div>
     );

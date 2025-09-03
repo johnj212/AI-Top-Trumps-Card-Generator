@@ -17,6 +17,21 @@ export interface CardData {
   rarity: Rarity;
 }
 
+export interface StoredCardData extends CardData {
+  // Generation context for recreation
+  theme: string;
+  colorScheme: string;
+  imageStyle: string;
+  imagePrompt: string;
+  
+  // Storage metadata
+  persistentImageUrl: string;
+  imageFilename: string;
+  generatedAt: string;
+  savedAt?: string; // Optional for backward compatibility
+  storageLocation?: string; // Optional for backward compatibility
+}
+
 export interface Theme {
   name: string;
   stats: string[];

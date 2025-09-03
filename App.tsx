@@ -3,12 +3,15 @@ import React, { useState, useCallback, useEffect } from 'react';
 import ControlPanel from './components/ControlPanel';
 import CardPreview from './components/CardPreview';
 import GeneratedCardsDisplay from './components/GeneratedCardsDisplay';
+import CardLibrary from './components/CardLibrary';
 import Loader from './components/Loader';
 import LoginScreen from './components/auth/LoginScreen';
 import PlayerProfile from './components/auth/PlayerProfile';
 import { generateCardIdeas, generateImage, generateStatsValues } from './services/geminiService';
 import { authService } from './services/authService';
-import type { CardData, ColorScheme, ImageStyle, Theme, Rarity, AuthState, PlayerData } from './types';
+import { cardStorageService } from './services/cardStorageService';
+import { cardRecreationService, type RecreatedCard } from './services/cardRecreationService';
+import type { CardData, StoredCardData, ColorScheme, ImageStyle, Theme, Rarity, AuthState, PlayerData } from './types';
 import { COLOR_SCHEMES, DEFAULT_CARD_DATA, IMAGE_STYLES, THEMES } from './constants';
 
 const getRandomRarity = (): Rarity => {
@@ -40,6 +43,9 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [shouldSaveCards, setShouldSaveCards] = useState(true);
+  const [previewCardPrompt, setPreviewCardPrompt] = useState<string>('');
+  const [isCardLibraryOpen, setIsCardLibraryOpen] = useState(false);
 
   // Check for existing authentication on app load
   useEffect(() => {
@@ -90,6 +96,34 @@ function App() {
 
   const handleAuthError = (errorMessage: string) => {
     setError(errorMessage);
+  };
+
+  const handleLoadCard = (recreatedCard: RecreatedCard) => {
+    // Load the card data into the preview
+    setCardData(recreatedCard.cardData);
+    setPreviewCard(recreatedCard.cardData);
+    
+    // Set the generation settings to match the original
+    const settings = cardRecreationService.getGenerationSettings({
+      ...recreatedCard.cardData,
+      theme: recreatedCard.metadata.theme,
+      colorScheme: recreatedCard.metadata.colorScheme,
+      imageStyle: recreatedCard.metadata.imageStyle,
+      imagePrompt: recreatedCard.metadata.imagePrompt,
+      persistentImageUrl: recreatedCard.cardData.image,
+      imageFilename: `${recreatedCard.cardData.id}.jpg`,
+      generatedAt: recreatedCard.metadata.generatedAt
+    });
+    
+    setSelectedTheme(settings.theme);
+    setSelectedColorScheme(settings.colorScheme);
+    setSelectedImageStyle(settings.imageStyle);
+    setPreviewCardPrompt(recreatedCard.metadata.imagePrompt);
+    
+    // Close the library
+    setIsCardLibraryOpen(false);
+    
+    console.log(`✅ Loaded card from library: ${recreatedCard.cardData.title}`);
   };
 
   const handleThemeChange = useCallback(async (theme: Theme) => {
@@ -148,6 +182,7 @@ function App() {
 
       setCardData(newPreviewCardData); // Update the live preview
       setPreviewCard(newPreviewCardData); // Save for the final pack
+      setPreviewCardPrompt(cardIdea.imagePrompt); // Store the prompt for later saving
 
     } catch (e: any) {
       setError(e.message || 'An unknown error occurred during preview generation.');
@@ -170,6 +205,7 @@ function App() {
 
     try {
         const newCards: CardData[] = [previewCard]; // Start with the preview card
+        const cardPrompts: string[] = [previewCardPrompt]; // Store prompts for storage
 
         // Generate 3 additional cards one at a time
         for (let i = 0; i < 3; i++) {
@@ -200,9 +236,36 @@ function App() {
             cardNumber: i + 2, // Start from card 2
             totalCards: 4,
           });
+          
+          // Store the actual image prompt used
+          cardPrompts.push(cardIdea.imagePrompt);
         }
 
         setGeneratedCards(newCards);
+
+        // Save cards to storage if enabled
+        if (shouldSaveCards) {
+          try {
+            setLoadingMessage('Saving cards to storage...');
+            
+            const storedCards: StoredCardData[] = newCards.map((card, index) => 
+              cardStorageService.enhanceCardWithStorageData(
+                card,
+                selectedTheme.name,
+                selectedColorScheme.name,
+                selectedImageStyle.name,
+                cardPrompts[index] || `${selectedImageStyle.promptSuffix} art of ${card.title}`
+              )
+            );
+            
+            await cardStorageService.saveCardPack(storedCards);
+            console.log('✅ Cards saved to storage successfully');
+            
+          } catch (saveError) {
+            console.warn('⚠️ Failed to save cards to storage:', saveError);
+            // Don't show error to user as generation was successful
+          }
+        }
 
     } catch (e: any) {
         setError(e.message || 'An unknown error occurred during pack generation.');
@@ -277,6 +340,7 @@ function App() {
             isLoading={isLoading}
             isPreviewGenerated={!!previewCard}
             onThemeChange={handleThemeChange}
+            onOpenLibrary={() => setIsCardLibraryOpen(true)}
           />
         </div>
         <div className="lg:order-2 flex flex-col items-center justify-start">
@@ -292,8 +356,15 @@ function App() {
       )}
 
        <footer className="text-center text-gray-500 mt-12">
-        <p>Built with Love.</p>
+        <p>Built with Love. <span className="text-gray-600">v1.1.0</span></p>
       </footer>
+
+      {/* Card Library Modal */}
+      <CardLibrary
+        isOpen={isCardLibraryOpen}
+        onClose={() => setIsCardLibraryOpen(false)}
+        onCardSelect={handleLoadCard}
+      />
     </div>
   );
 }

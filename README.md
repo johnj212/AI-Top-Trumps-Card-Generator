@@ -1,4 +1,4 @@
-# 🎯 AI Top Trumps Card Generator
+/# 🎯 AI Top Trumps Card Generator
 
 ![Example Card](/example_images/Aircraft-Stratosphere_Sovereign.jpg) ![Example Card](/example_images/Dinosaurs-Carnotaurus__Horned_Hunter.jpg) ![Example Card](/example_images/Fantasy-The_Sunstone_Golem.jpg)
 
