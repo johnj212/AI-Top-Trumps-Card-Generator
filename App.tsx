@@ -99,9 +99,11 @@ function App() {
       try {
           // Use predefined stats from the theme, generate only the values
           const newStats = await generateStatsValues(theme.stats);
+          // Auto-generate series name based on theme
+          const autoSeries = `${theme.name} Collection`;
           setCardData(prev => ({
               ...prev,
-              series: prev.series, // Keep current series, don't change it to theme name
+              series: autoSeries,
               stats: newStats
           }));
           setPreviewCard(null); // Reset preview when theme changes
@@ -121,7 +123,7 @@ function App() {
     setLoadingMessage('Generating preview card idea...');
 
     try {
-      const cardIdeas = await generateCardIdeas(cardData.series, selectedTheme.name, selectedImageStyle, cardData.stats, 1);
+      const cardIdeas = await generateCardIdeas(selectedTheme.name, selectedImageStyle, cardData.stats, 1);
       const cardIdea = cardIdeas && cardIdeas.length > 0 ? cardIdeas[0] : undefined;
       if (!cardIdea || !cardIdea.title || !cardIdea.imagePrompt || !Array.isArray(cardIdea.stats)) {
         setError('Failed to generate a valid card idea. Please try again.');
@@ -133,7 +135,7 @@ function App() {
       const newPreviewCardData = {
         id: `card-preview-${Date.now()}`,
         title: cardIdea.title,
-        series: cardData.series,
+        series: `${selectedTheme.name} Collection`,
         image: `data:image/jpeg;base64,${imageBase64}`,
         stats: cardIdea.stats,
         rarity: getRandomRarity(),
@@ -171,7 +173,7 @@ function App() {
           setLoadingMessage(`Generating card ${i + 2} of 4...`);
           
           // Generate a single card idea
-          const cardIdeas = await generateCardIdeas(cardData.series, selectedTheme.name, selectedImageStyle, cardData.stats, 1, previewCard.title);
+          const cardIdeas = await generateCardIdeas(selectedTheme.name, selectedImageStyle, cardData.stats, 1, previewCard.title);
           const cardIdea = cardIdeas && cardIdeas.length > 0 ? cardIdeas[0] : undefined;
           
           if (!cardIdea || !cardIdea.title || !cardIdea.imagePrompt || !Array.isArray(cardIdea.stats)) {
@@ -185,7 +187,7 @@ function App() {
           newCards.push({
             id: `card-${Date.now()}-${i}`,
             title: cardIdea.title,
-            series: cardData.series,
+            series: `${selectedTheme.name} Collection`,
             image: `data:image/jpeg;base64,${imageBase64}`,
             stats: cardIdea.stats,
             rarity: getRandomRarity(),

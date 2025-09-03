@@ -1,13 +1,9 @@
 
 import type { CardIdea, ImageStyle, Statistic } from '../types';
-import { SERIES, THEMES, IMAGE_STYLES, getThemesForSeries } from '../constants';
+import { THEMES, IMAGE_STYLES } from '../constants';
 import { authService } from './authService';
 
 // Input validation functions for security
-function validateSeriesName(seriesName: string): string | null {
-  return SERIES.some(s => s.name === seriesName) ? seriesName : null;
-}
-
 function validateThemeName(themeName: string): string | null {
   return THEMES.find(t => t.name === themeName)?.name || null;
 }
@@ -173,19 +169,14 @@ export async function generateStatsValues(statNames: string[]): Promise<Statisti
   }));
 }
 
-export async function generateCardIdeas(seriesName: string, themeName: string, imageStyle: ImageStyle, stats: Statistic[], count: number, excludeTitle?: string): Promise<CardIdea[]> {
+export async function generateCardIdeas(themeName: string, imageStyle: ImageStyle, stats: Statistic[], count: number, excludeTitle?: string): Promise<CardIdea[]> {
   // Validate and sanitize inputs
-  const validatedSeriesName = validateSeriesName(seriesName);
   const validatedThemeName = validateThemeName(themeName);
   const validatedImageStyleName = validateImageStyleName(imageStyle.name);
   const validatedStats = stats.filter(stat => validateStatName(stat.name));
   
-  // Validate that theme is available for the selected series
-  const availableThemes = getThemesForSeries(validatedSeriesName || '');
-  const isThemeValidForSeries = validatedThemeName && availableThemes.includes(validatedThemeName);
-  
-  if (!validatedSeriesName || !validatedThemeName || !validatedImageStyleName || validatedStats.length === 0 || !isThemeValidForSeries) {
-    throw new Error("Invalid input parameters for card generation or theme not available for selected series");
+  if (!validatedThemeName || !validatedImageStyleName || validatedStats.length === 0) {
+    throw new Error("Invalid input parameters for card generation");
   }
   
   const statNames = validatedStats.map(s => s.name).join(', ');
