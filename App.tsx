@@ -129,13 +129,16 @@ function App() {
         setError('Failed to generate a valid card idea. Please try again.');
         return;
       }
+      const cardId = `card-preview-${Date.now()}`;
+      const series = `${selectedTheme.name} Collection`;
+      
       setLoadingMessage(`Generating image for ${cardIdea.title}...`);
-      const imageBase64 = await generateImage(cardIdea.imagePrompt);
+      const imageBase64 = await generateImage(cardIdea.imagePrompt, cardId, series);
 
       const newPreviewCardData = {
-        id: `card-preview-${Date.now()}`,
+        id: cardId,
         title: cardIdea.title,
-        series: `${selectedTheme.name} Collection`,
+        series: series,
         image: `data:image/jpeg;base64,${imageBase64}`,
         stats: cardIdea.stats,
         rarity: getRandomRarity(),
@@ -181,13 +184,16 @@ function App() {
             continue;
           }
           
+          const cardId = `card-${Date.now()}-${i}`;
+          const series = `${selectedTheme.name} Collection`;
+          
           setLoadingMessage(`Generating image for ${cardIdea.title}... (${i + 2}/4)`);
-          const imageBase64 = await generateImage(cardIdea.imagePrompt);
+          const imageBase64 = await generateImage(cardIdea.imagePrompt, cardId, series);
 
           newCards.push({
-            id: `card-${Date.now()}-${i}`,
+            id: cardId,
             title: cardIdea.title,
-            series: `${selectedTheme.name} Collection`,
+            series: series,
             image: `data:image/jpeg;base64,${imageBase64}`,
             stats: cardIdea.stats,
             rarity: getRandomRarity(),

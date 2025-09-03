@@ -25,11 +25,12 @@ RUN rm -rf node_modules/.cache \
 
 # Use PORT environment variable that Cloud Run provides
 ENV PORT=8080
+ENV NODE_ENV=production
 EXPOSE 8080
 
-# Health check for Cloud Run
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/health || exit 1
+# Health check for Cloud Run - extended start period for better reliability
+HEALTHCHECK --interval=30s --timeout=15s --start-period=120s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider --timeout=10 http://localhost:$PORT/api/health || exit 1
 
-# Use production command
-CMD ["npm", "run", "start"]
+# Use production command with error handling
+CMD ["sh", "-c", "echo 'Starting container...' && npm run start"]

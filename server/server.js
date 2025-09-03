@@ -7,45 +7,110 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { saveImage, saveCard, saveLog, listCards, getStorageStats, getImageSignedUrl } from './storage.js';
 import { verifyToken } from './middleware/authMiddleware.js';
+import { globalRateLimiter, speedLimiter, rateLimitLogger } from './middleware/rateLimiter.js';
 import authRoutes from './auth/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
+console.log('🚀 Starting AI Top Trumps server...');
+console.log('📍 Working directory:', process.cwd());
+console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
+console.log('🔌 Port configuration:', process.env.PORT ? `Cloud Run PORT=${process.env.PORT}` : 'Default port 3001');
+
 const app = express();
 const port = process.env.PORT || 3001;
 
-app.use(cors());
-app.use(express.json());
+console.log(`🎯 Server will listen on port ${port}`);
 
-// Serve static files from example_images directory
-app.use('/example_images', express.static(path.join(__dirname, '..', 'example_images')));
-
-// Serve built frontend in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '..', 'dist')));
-}
-
-console.log('GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? 'Loaded' : 'Not Loaded');
-console.log('STORAGE_BUCKET:', process.env.STORAGE_BUCKET || 'cards_stroage');
-console.log('GOOGLE_APPLICATION_CREDENTIALS:', process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'Loaded' : 'Not Set');
+// Essential environment check with detailed logging
+console.log('🔑 Environment Variables Check:');
+console.log('  - GEMINI_API_KEY:', process.env.GEMINI_API_KEY ? 'Loaded ✅' : 'Missing ❌');
+console.log('  - STORAGE_BUCKET:', process.env.STORAGE_BUCKET || 'Default: cards_stroage');
+console.log('  - GOOGLE_APPLICATION_CREDENTIALS:', process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'Loaded ✅' : 'Not Set ⚠️');
+console.log('  - NODE_ENV:', process.env.NODE_ENV || 'development');
 
 if (!process.env.GEMINI_API_KEY) {
-  console.error('GEMINI_API_KEY environment variable is missing. Server cannot start.');
+  console.error('❌ CRITICAL: GEMINI_API_KEY environment variable is missing. Server cannot start.');
+  console.error('💡 Ensure GEMINI_API_KEY is set via environment variables or secrets.');
   process.exit(1);
 }
 
-const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
+try {
+  console.log('⚙️ Configuring Express middleware...');
+  
+  app.use(cors());
+  app.use(express.json());
 
-// Add authentication routes
-app.use('/api/auth', authRoutes);
+  // Trust proxy for accurate IP addresses (important for rate limiting)
+  app.set('trust proxy', 1);
+  console.log('🔧 Proxy trust configured');
+
+  // Apply rate limiting globally
+  app.use(globalRateLimiter);
+  app.use(speedLimiter);
+  app.use(rateLimitLogger);
+  console.log('🚦 Rate limiting middleware applied');
+
+  // Serve static files from example_images directory
+  const exampleImagesPath = path.join(__dirname, '..', 'example_images');
+  app.use('/example_images', express.static(exampleImagesPath));
+  console.log('📁 Example images static path:', exampleImagesPath);
+
+  // Serve built frontend in production
+  if (process.env.NODE_ENV === 'production') {
+    const distPath = path.join(__dirname, '..', 'dist');
+    app.use(express.static(distPath));
+    console.log('📦 Production static files path:', distPath);
+  }
+  
+  console.log('✅ Express middleware configuration complete');
+
+} catch (middlewareError) {
+  console.error('❌ FATAL: Failed to configure Express middleware:', middlewareError);
+  console.error('Stack:', middlewareError.stack);
+  process.exit(1);
+}
+
+console.log('🤖 Initializing Google Gemini AI...');
+let genAI;
+try {
+  genAI = new GoogleGenAI(process.env.GEMINI_API_KEY);
+  console.log('✅ Gemini AI client initialized successfully');
+} catch (genAIError) {
+  console.error('❌ FATAL: Failed to initialize Gemini AI client:', genAIError);
+  console.error('💡 Check GEMINI_API_KEY format and validity');
+  process.exit(1);
+}
+
+// Helper function to extract user context for logging
+const getUserContext = (req) => ({
+  playerCode: req.playerData?.playerCode || 'anonymous',
+  clientIP: req.ip || req.connection.remoteAddress,
+  userAgent: req.headers['user-agent'] || 'unknown'
+});
+
+console.log('🔐 Setting up authentication routes...');
+try {
+  // Add authentication routes
+  app.use('/api/auth', authRoutes);
+  console.log('✅ Authentication routes configured');
+} catch (authError) {
+  console.error('❌ FATAL: Failed to configure auth routes:', authError);
+  process.exit(1);
+}
 
 // Log server startup (async but non-blocking)
+console.log('📝 Logging server startup...');
 saveLog('info', 'AI Top Trumps server starting', {
   port,
   timestamp: new Date().toISOString(),
-  environment: process.env.NODE_ENV || 'development'
-}).catch(console.error);
+  environment: process.env.NODE_ENV || 'development',
+  hasGeminiKey: !!process.env.GEMINI_API_KEY,
+  hasStorageCredentials: !!process.env.GOOGLE_APPLICATION_CREDENTIALS
+}).catch(err => {
+  console.warn('⚠️ Warning: Could not save startup log:', err.message);
+});
 
 app.post('/api/generate', verifyToken, async (req, res) => {
   console.log('Request body:', req.body);
@@ -55,7 +120,12 @@ app.post('/api/generate', verifyToken, async (req, res) => {
     const { prompt, modelName, cardId, series } = req.body;
 
     if (!prompt || !modelName) {
-      await saveLog('error', 'Missing prompt or modelName in request', { prompt, modelName });
+      await saveLog('error', 'Missing prompt or modelName in request', { 
+        ...getUserContext(req),
+        prompt: prompt || 'missing', 
+        modelName: modelName || 'missing',
+        endpoint: req.path
+      });
       return res.status(400).send('Missing prompt or modelName in request body');
     }
 
@@ -63,10 +133,12 @@ app.post('/api/generate', verifyToken, async (req, res) => {
     console.log('Attempting to generate content with model:', modelName);
     
     await saveLog('info', 'Starting content generation', {
+      ...getUserContext(req),
       modelName,
       promptLength: prompt.length,
       cardId,
-      series
+      series,
+      endpoint: req.path
     });
 
     if (modelName === 'imagen-3.0-generate-002') {
@@ -104,19 +176,23 @@ app.post('/api/generate', verifyToken, async (req, res) => {
           persistentImageUrl = await saveImage(cardId, imageBuffer, series);
           
           await saveLog('info', 'Image saved to storage', {
+            ...getUserContext(req),
             cardId,
             series,
             imageSizeKB: Math.round(imageBuffer.length / 1024),
-            generationTimeMs: Date.now() - startTime
+            generationTimeMs: Date.now() - startTime,
+            endpoint: req.path
           });
           
           console.log(`✅ Image persisted: ${persistentImageUrl}`);
         } catch (storageError) {
           console.error('⚠️ Failed to save image to storage:', storageError);
           await saveLog('error', 'Failed to save image to storage', {
+            ...getUserContext(req),
             error: storageError.message,
             cardId,
-            series
+            series,
+            endpoint: req.path
           });
           // Continue without persistent storage
         }
@@ -178,11 +254,13 @@ app.post('/api/generate', verifyToken, async (req, res) => {
     console.error('Error in /api/generate:', error);
     
     await saveLog('error', 'Content generation failed', {
+      ...getUserContext(req),
       error: error.message,
       stack: error.stack,
       modelName: req.body.modelName,
       promptLength: req.body.prompt?.length,
-      generationTimeMs: Date.now() - startTime
+      generationTimeMs: Date.now() - startTime,
+      endpoint: req.path
     });
     
     res.status(500).send('Error generating content');
@@ -195,7 +273,11 @@ app.post('/api/cards', verifyToken, async (req, res) => {
     const cardData = req.body;
     
     if (!cardData.id || !cardData.title) {
-      await saveLog('error', 'Invalid card data for saving', { cardData });
+      await saveLog('error', 'Invalid card data for saving', { 
+        ...getUserContext(req),
+        cardData: { id: cardData.id || 'missing', title: cardData.title || 'missing' },
+        endpoint: req.path
+      });
       return res.status(400).json({ error: 'Missing required card fields: id, title' });
     }
     
@@ -203,10 +285,12 @@ app.post('/api/cards', verifyToken, async (req, res) => {
     const cardPath = await saveCard(cardData.id, cardData);
     
     await saveLog('info', 'Card saved successfully', {
+      ...getUserContext(req),
       cardId: cardData.id,
       title: cardData.title,
       series: cardData.series,
-      storagePath: cardPath
+      storagePath: cardPath,
+      endpoint: req.path
     });
     
     res.json({ 
@@ -220,8 +304,10 @@ app.post('/api/cards', verifyToken, async (req, res) => {
     console.error('Error saving card:', error);
     
     await saveLog('error', 'Failed to save card', {
+      ...getUserContext(req),
       error: error.message,
-      cardData: req.body
+      cardData: { id: req.body.id, title: req.body.title },
+      endpoint: req.path
     });
     
     res.status(500).json({ error: 'Failed to save card', details: error.message });
@@ -239,9 +325,11 @@ app.get('/api/cards', verifyToken, async (req, res) => {
     const limitedCards = cards.slice(0, parseInt(limit));
     
     await saveLog('info', 'Cards listed', {
+      ...getUserContext(req),
       series,
       totalFound: cards.length,
-      returned: limitedCards.length
+      returned: limitedCards.length,
+      endpoint: req.path
     });
     
     res.json({
@@ -255,8 +343,10 @@ app.get('/api/cards', verifyToken, async (req, res) => {
     console.error('Error listing cards:', error);
     
     await saveLog('error', 'Failed to list cards', {
+      ...getUserContext(req),
       error: error.message,
-      series: req.query.series
+      series: req.query.series,
+      endpoint: req.path
     });
     
     res.status(500).json({ error: 'Failed to list cards', details: error.message });
@@ -278,7 +368,8 @@ app.get('/api/storage/stats', async (req, res) => {
     console.error('Error getting storage stats:', error);
     
     await saveLog('error', 'Failed to get storage stats', {
-      error: error.message
+      error: error.message,
+      endpoint: req.path
     });
     
     res.status(500).json({ error: 'Failed to get storage stats', details: error.message });
@@ -301,7 +392,9 @@ app.get('/api/images/:series/:date/:filename', async (req, res) => {
     
     await saveLog('info', 'Image URL generated', {
       imagePath,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      endpoint: req.path,
+      clientIP: req.ip
     });
     
     // Redirect to the signed URL
@@ -312,7 +405,9 @@ app.get('/api/images/:series/:date/:filename', async (req, res) => {
     
     await saveLog('error', 'Failed to serve image', {
       error: error.message,
-      imagePath: `images/${req.params.series}/${req.params.date}/${req.params.filename}`
+      imagePath: `images/${req.params.series}/${req.params.date}/${req.params.filename}`,
+      endpoint: req.path,
+      clientIP: req.ip
     });
     
     res.status(404).json({ error: 'Image not found or access denied', details: error.message });
@@ -353,13 +448,60 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Server listening at http://0.0.0.0:${port}`);
-  console.log('Available endpoints:');
-  console.log('  POST /api/generate - Generate content (images/text)');
-  console.log('  POST /api/cards - Save card data');
-  console.log('  GET  /api/cards - List stored cards');
-  console.log('  GET  /api/storage/stats - Storage statistics');
-  console.log('  GET  /api/images/:series/:date/:filename - Serve stored images with fresh signed URLs');
-  console.log('  GET  /api/health - Health check');
+console.log('🌐 Starting server...');
+const server = app.listen(port, '0.0.0.0', () => {
+  console.log('🎉 SUCCESS: Server is running!');
+  console.log(`🔗 Server listening at http://0.0.0.0:${port}`);
+  console.log('📋 Available endpoints:');
+  console.log('  🔐 POST /api/auth/login - User authentication');
+  console.log('  🤖 POST /api/generate - Generate content (images/text)');
+  console.log('  💾 POST /api/cards - Save card data');
+  console.log('  📚 GET  /api/cards - List stored cards');
+  console.log('  📊 GET  /api/storage/stats - Storage statistics');
+  console.log('  🖼️  GET  /api/images/:series/:date/:filename - Serve stored images');
+  console.log('  ❤️  GET  /api/health - Health check');
+  console.log('  🌍 GET  /* - Frontend application (production)');
+  console.log('');
+  console.log('✅ Server startup complete! Ready to accept requests.');
+  
+  // Log successful startup
+  saveLog('info', 'Server successfully started', {
+    port,
+    host: '0.0.0.0',
+    timestamp: new Date().toISOString(),
+    processId: process.pid,
+    uptime: process.uptime()
+  }).catch(err => {
+    console.warn('⚠️ Warning: Could not save startup success log:', err.message);
+  });
+});
+
+// Handle server startup errors
+server.on('error', (err) => {
+  console.error('❌ FATAL: Server failed to start:', err);
+  
+  if (err.code === 'EADDRINUSE') {
+    console.error(`💡 Port ${port} is already in use. Try a different port or stop the existing process.`);
+  } else if (err.code === 'EACCES') {
+    console.error(`💡 Permission denied to bind to port ${port}. Try a different port or run with appropriate permissions.`);
+  }
+  
+  process.exit(1);
+});
+
+// Graceful shutdown handling
+process.on('SIGTERM', () => {
+  console.log('📴 SIGTERM received, shutting down gracefully...');
+  server.close(() => {
+    console.log('✅ Server closed successfully');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('📴 SIGINT received, shutting down gracefully...');
+  server.close(() => {
+    console.log('✅ Server closed successfully');
+    process.exit(0);
+  });
 });

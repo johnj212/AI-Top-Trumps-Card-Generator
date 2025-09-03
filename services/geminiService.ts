@@ -297,14 +297,19 @@ export async function generateCardIdeas(themeName: string, imageStyle: ImageStyl
   }
 }
 
-export async function generateImage(prompt: string): Promise<string> {
+export async function generateImage(prompt: string, cardId: string, series: string): Promise<string> {
   // Validate image prompt for security
   if (!validateImagePrompt(prompt)) {
     throw new Error("Invalid image prompt provided");
   }
   
   try {
-    const responseText = await callApi(prompt, 'imagen-3.0-generate-002');
+    const responseText = await callApi(prompt, 'imagen-3.0-generate-002', {
+      prompt,
+      modelName: 'imagen-3.0-generate-002',
+      cardId,
+      series
+    });
     let responseObj;
     try {
       responseObj = JSON.parse(responseText);

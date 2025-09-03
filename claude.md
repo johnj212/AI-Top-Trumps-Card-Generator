@@ -9,6 +9,8 @@
 - **Player Code**: Currently set to `TIGER34` (configurable in `server/middleware/authMiddleware.js`)
 - **Token Required**: All API requests must include `Authorization: Bearer <token>` header
 - **Session Duration**: JWT tokens expire after 24 hours
+- **Rate Limiting**: Global limit of 100 requests per day per user/IP address
+- **Speed Limiting**: Requests slowed down after 50 requests per day
 
 ## Backend API Contract
 
@@ -76,6 +78,10 @@
 - Always test both stats and image generation after any change.
 
 ## Recent Development History
+* ✅ **Google Cloud Logging Fix** - Fixed log append behavior to prevent overwriting previous logs (Sep 2025)
+* ✅ **Color Scheme Border Fix** - Fixed Green-Brown and Red-Gold color schemes to use proper accent borders (Sep 2025)
+* ✅ **Global Rate Limiting System** - 100 requests per day per user with detailed logging (Sep 2025)
+* ✅ **Enhanced Logging System** - All logs now include user details and rate limit information
 * ✅ **Player Code Authentication System** - Implemented JWT-based login with player code "TIGER34" (Sep 2025)
 * ✅ **API Security Protection** - All `/api/generate` and `/api/cards` endpoints now require authentication
 * ✅ **Child-Friendly Login UI** - Gaming-themed login screen designed for 12-year-old users
@@ -92,6 +98,8 @@
 ## Current Project Status
 
 ### Completed Features
+* ✅ **Global Rate Limiting** - 100 requests per day limit with speed throttling and comprehensive logging
+* ✅ **Enhanced Cloud Logging** - User details, rate limits, and comprehensive request tracking
 * ✅ **Player Code Authentication System** - Secure JWT-based login with player code authentication
 * ✅ **Protected API Access** - All AI endpoints require valid authentication tokens
 * ✅ **Child-Friendly Security** - Login system designed for 12-year-old target audience

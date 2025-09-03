@@ -21,6 +21,7 @@ A state-of-the-art AI-powered web application that generates professional-qualit
 -   **🎮 Child-Friendly Interface**: Login screen designed specifically for 12-year-old target audience
 -   **🛡️ Protected API Access**: All AI endpoints require authentication to prevent unauthorized usage
 -   **💾 Session Management**: Persistent login state with automatic token validation
+-   **⚡ Rate Limiting**: Global rate limit of 100 requests per day to prevent abuse and control costs
 -   **🤖 AI-Powered Content Generation**: Utilizes `gemini-2.5-flash` to dynamically generate thematic statistics and full card packs with unique titles and values.
 -   **🎨 Stunning AI Image Generation**: Leverages `imagen-3.0-generate-002` to create high-quality, custom artwork for each card based on dynamic prompts.
 -   **👀 Live Interactive Preview**: Instantly see how your card looks with a beautiful initial preview that loads immediately.
@@ -277,17 +278,46 @@ Validate existing JWT token
 Authorization: Bearer <jwt-token>
 ```
 
+## ⚡ Rate Limiting
+
+The application implements a global rate limiting system to ensure fair usage and prevent abuse:
+
+- **Daily Limit**: 100 requests per day per user/IP address
+- **Reset Period**: 24 hours (86,400 seconds)
+- **Speed Limiting**: Requests are slowed down after 50 requests per day
+- **Scope**: Applied to all endpoints except health checks and authentication
+- **Headers**: Rate limit information returned in response headers
+
+When rate limit is exceeded:
+```json
+{
+  "error": "Daily rate limit exceeded",
+  "message": "You have exceeded the maximum number of requests (100) allowed per day. Please try again tomorrow.",
+  "resetTime": "2025-09-03T18:35:00.000Z",
+  "limit": 100,
+  "window": "24 hours"
+}
+```
+
 ### Protected Endpoints
 
 ### POST `/api/generate`
 Generate AI content for cards
 
 **🔐 Authentication Required**: This endpoint requires a valid JWT token in the Authorization header.
+**⚡ Rate Limited**: 100 requests per day per user/IP address.
 
 **Headers:**
 ```
 Authorization: Bearer <jwt-token>
 Content-Type: application/json
+```
+
+**Rate Limit Headers (Response):**
+```
+RateLimit-Limit: 100
+RateLimit-Remaining: 99  
+RateLimit-Reset: 86400
 ```
 
 **Request Body:**
