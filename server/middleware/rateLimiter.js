@@ -1,11 +1,27 @@
 import rateLimit from 'express-rate-limit';
 import slowDown from 'express-slow-down';
-import { saveLog } from '../storage.js';
+import { saveLog } from '../storage-wrapper.js';
+
+// Helper function to safely handle IP addresses including IPv6
+const getClientIdentifier = (req, res) => {
+  // If authenticated, use player code for rate limiting
+  if (req.playerData && req.playerData.playerCode) {
+    return `player:${req.playerData.playerCode}`;
+  }
+  
+  // For development, use a simple key to avoid IPv6 validation
+  if (process.env.NODE_ENV === 'development') {
+    return 'dev-user';
+  }
+  
+  // Use the request IP for production (let express-rate-limit handle IPv6)
+  return req.ip;
+};
 
 // Global rate limiter - 100 requests per day per user/IP
 export const globalRateLimiter = rateLimit({
   windowMs: 24 * 60 * 60 * 1000, // 24 hours
-  max: 100, // 100 requests per day
+  max: process.env.NODE_ENV === 'development' ? 1000 : 100, // Higher limit in development
   message: {
     error: 'Daily rate limit exceeded',
     message: 'You have exceeded the maximum number of requests (100) allowed per day. Please try again tomorrow.',
@@ -14,15 +30,8 @@ export const globalRateLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   
-  // Custom key generator to use player code from JWT if available
-  keyGenerator: (req, res) => {
-    // If authenticated, use player code for rate limiting
-    if (req.playerData && req.playerData.playerCode) {
-      return `player:${req.playerData.playerCode}`;
-    }
-    // Fall back to default IP key generator
-    return req.ip;
-  },
+  // Use the helper function for proper IP handling
+  keyGenerator: getClientIdentifier,
   
   // Custom handler for when rate limit is exceeded
   handler: async (req, res, next) => {
@@ -55,47 +64,51 @@ export const globalRateLimiter = rateLimit({
 
   // Skip rate limiting for health checks and auth validation
   skip: (req, res) => {
+    // Skip rate limiting completely in development
+    if (process.env.NODE_ENV === 'development') {
+      return true;
+    }
     return req.path === '/api/health' || 
            req.path === '/api/auth/validate' ||
            (req.path === '/api/auth/login' && req.method === 'POST');
   },
 
-  // Disable validation warnings
-  validate: {
-    keyGeneratorIpFallback: false
-  }
+  // Skip validation in non-development environments to avoid compatibility issues
+  ...(process.env.NODE_ENV === 'development' ? {} : { validate: false })
 });
 
 // Speed limiter - slow down requests after 50 requests
 export const speedLimiter = slowDown({
   windowMs: 24 * 60 * 60 * 1000, // 24 hours
-  delayAfter: 50, // allow 50 requests per day at full speed
-  delayMs: (hits) => 500, // add 500ms delay per request after delayAfter
-  maxDelayMs: 10000, // max delay of 10 seconds
+  delayAfter: process.env.NODE_ENV === 'development' ? 1000 : 50, // Higher limit in development
+  delayMs: (hits) => process.env.NODE_ENV === 'development' ? 0 : 500, // No delay in development
+  maxDelayMs: process.env.NODE_ENV === 'development' ? 0 : 10000, // No max delay in development
   
   // Use same key generator as rate limiter
-  keyGenerator: (req, res) => {
-    if (req.playerData && req.playerData.playerCode) {
-      return `player:${req.playerData.playerCode}`;
-    }
-    return req.ip;
-  },
+  keyGenerator: getClientIdentifier,
   
   // Skip speed limiting for the same endpoints
   skip: (req, res) => {
+    // Skip speed limiting completely in development
+    if (process.env.NODE_ENV === 'development') {
+      return true;
+    }
     return req.path === '/api/health' || 
            req.path === '/api/auth/validate' ||
            (req.path === '/api/auth/login' && req.method === 'POST');
   },
 
-  // Validation settings to suppress warnings
-  validate: {
-    delayMs: false
-  }
+  // Skip validation in non-development environments to avoid compatibility issues
+  ...(process.env.NODE_ENV === 'development' ? {} : { validate: false })
 });
 
 // Middleware to log successful requests with rate limit headers
 export const rateLimitLogger = async (req, res, next) => {
+  // Skip detailed logging in development to prevent cloud storage issues
+  if (process.env.NODE_ENV === 'development') {
+    return next();
+  }
+  
   // Store original res.json to intercept successful responses
   const originalJson = res.json;
   

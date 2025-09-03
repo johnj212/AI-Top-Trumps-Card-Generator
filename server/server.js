@@ -5,7 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { saveImage, saveCard, saveLog, listCards, getStorageStats, getImageSignedUrl } from './storage.js';
+import { saveImage, saveCard, saveLog, listCards, getStorageStats, getImageSignedUrl } from './storage-wrapper.js';
 import { verifyToken } from './middleware/authMiddleware.js';
 import { globalRateLimiter, speedLimiter, rateLimitLogger } from './middleware/rateLimiter.js';
 import authRoutes from './auth/auth.js';
@@ -57,11 +57,18 @@ try {
   app.use('/example_images', express.static(exampleImagesPath));
   console.log('📁 Example images static path:', exampleImagesPath);
 
-  // Serve built frontend in production
-  if (process.env.NODE_ENV === 'production') {
+  // Serve dev-storage files in development
+  if (process.env.NODE_ENV === 'development') {
+    const devStoragePath = path.join(__dirname, '..', 'dev-storage');
+    app.use('/dev-storage', express.static(devStoragePath));
+    console.log('🏠 Dev storage static path:', devStoragePath);
+  }
+
+  // Serve built frontend in production and UAT
+  if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'uat') {
     const distPath = path.join(__dirname, '..', 'dist');
     app.use(express.static(distPath));
-    console.log('📦 Production static files path:', distPath);
+    console.log('📦 Static files path:', distPath);
   }
   
   console.log('✅ Express middleware configuration complete');
@@ -442,7 +449,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Catch all handler for React Router (must be after all API routes)
-if (process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'uat') {
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
   });
