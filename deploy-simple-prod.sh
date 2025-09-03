@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# Simple Cloud Run Deployment Script (build and deploy only)
+# PRODUCTION - Simple Cloud Run Deployment Script (build and deploy only)
+# WARNING: This deploys directly to PRODUCTION environment
+# Use deploy-prod.sh for human-in-the-loop safeguards
 set -e
 
 PROJECT_ID="whispers-of-the-wildwood"
@@ -8,7 +10,7 @@ SERVICE_NAME="ai-top-trumps-card-generator"
 REGION="europe-north1"
 IMAGE_NAME="gcr.io/$PROJECT_ID/$SERVICE_NAME"
 
-echo "🚀 Quick Deploy AI Top Trumps Card Generator to Cloud Run..."
+echo "🚀 Quick Deploy AI Top Trumps Card Generator to PRODUCTION..."
 
 # Set the project
 echo "📋 Setting project to $PROJECT_ID"
@@ -19,7 +21,7 @@ echo "🏗️ Building container image..."
 gcloud builds submit --tag $IMAGE_NAME
 
 # Deploy to Cloud Run (assumes secrets already configured)
-echo "☁️ Deploying to Cloud Run..."
+echo "☁️ Deploying to PRODUCTION Cloud Run..."
 gcloud run deploy $SERVICE_NAME \
     --image $IMAGE_NAME \
     --platform managed \
@@ -38,14 +40,14 @@ gcloud run deploy $SERVICE_NAME \
 # Get the service URL
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)')
 
-echo "✅ Deployment complete!"
+echo "✅ PRODUCTION Deployment complete!"
 echo "🌐 Service URL: $SERVICE_URL"
 echo "📊 Cloud Console: https://console.cloud.google.com/run/detail/$REGION/$SERVICE_NAME"
 
 # Test the deployment
-echo "🧪 Testing deployment..."
+echo "🧪 Testing PRODUCTION deployment..."
 curl -s "$SERVICE_URL/api/health" | head -5 || echo "Health check failed - service might still be starting"
 
 echo ""
-echo "🎉 Your AI Top Trumps Card Generator is now running on Google Cloud Run!"
+echo "🎉 Your AI Top Trumps Card Generator is now running on PRODUCTION!"
 echo "🔗 Access it at: $SERVICE_URL"

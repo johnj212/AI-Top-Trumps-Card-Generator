@@ -78,6 +78,7 @@
 - Always test both stats and image generation after any change.
 
 ## Recent Development History
+* ✅ **Deployment Script Restructuring** - Fixed ambiguous deployment script naming to prevent production confusion (Sep 3, 2025)
 * ✅ **Google Cloud Logging Fix** - Fixed log append behavior to prevent overwriting previous logs (Sep 2025)
 * ✅ **Color Scheme Border Fix** - Fixed Green-Brown and Red-Gold color schemes to use proper accent borders (Sep 2025)
 * ✅ **Global Rate Limiting System** - 100 requests per day per user with detailed logging (Sep 2025)
@@ -89,7 +90,7 @@
 * ✅ **Production Deployment** - Successfully deployed to Google Cloud Run (europe-north1)
 * ✅ **Cloud Storage Integration** - Added Google Cloud Storage for persistent image and card storage
 * ✅ **Environment Consolidation** - Unified .env configuration for better deployment management
-* ✅ **Deployment Optimization** - Streamlined Cloud Run deployment with optimized Docker builds
+* ✅ **Deployment Script Security** - Restructured deployment scripts with explicit environment naming
 * ✅ **Initial Preview Fix** - Fixed initial preview image not displaying in production
 * ✅ **Container Optimization** - Removed unnecessary deployment files, enhanced .dockerignore
 * ✅ **Sequential Generation** - Implemented reliable card-by-card generation process
@@ -189,8 +190,10 @@
 * **Project**: whispers-of-the-wildwood
 * **Service Name**: ai-top-trumps-card-generator
 * **Deployment Scripts**: 
-  - `./deploy.sh` - Full deployment with secret setup
-  - `./deploy-simple.sh` - Quick rebuild and redeploy
+  - `./deploy-prod.sh` - Production deployment with human-in-the-loop safeguards
+  - `./deploy-simple-prod.sh` - Quick production deployment (no prompts)
+  - `./deploy-uat.sh` - UAT deployment with detailed logging
+  - `./deploy-simple-uat.sh` - Quick UAT deployment (streamlined)
 * **Environment Variables**: Managed via Google Secret Manager
 * **Storage**: Google Cloud Storage for images and card data
 
@@ -201,6 +204,41 @@
 4. Image optimization and display with proper aspect ratios
 5. Rarity assignment with weighted randomization
 
+## 🚀 Deployment Management
+
+### Deployment Script Reference
+The project uses explicit environment naming to prevent deployment confusion:
+
+| Script | Target Environment | Purpose | Prompts | Resources | Service Name |
+|--------|-------------------|---------|---------|-----------|--------------|
+| `./deploy-prod.sh` | Production | Safe deployment with confirmations | ✅ Yes | 2Gi RAM, 2 CPU | `ai-top-trumps-card-generator` |
+| `./deploy-simple-prod.sh` | Production | Quick deployment for CI/CD | ❌ No | 2Gi RAM, 2 CPU | `ai-top-trumps-card-generator` |
+| `./deploy-uat.sh` | UAT | Full deployment with logging | ✅ Yes | 1Gi RAM, 1 CPU | `ai-top-trumps-card-generator-uat` |
+| `./deploy-simple-uat.sh` | UAT | Streamlined deployment | ❌ No | 1Gi RAM, 1 CPU | `ai-top-trumps-card-generator-uat` |
+
+### Environment Configuration
+- **Production**: 
+  - NODE_ENV=production
+  - Storage: `cards_storage-whispers-of-the-wildwood`
+  - Secret: `gemini-api-key`
+- **UAT**: 
+  - NODE_ENV=uat
+  - Storage: `cards_storage-uat-whispers-of-the-wildwood`
+  - Secret: `gemini-api-key-uat`
+
+### Deployment Best Practices
+1. **Always test in UAT first**: Use `./deploy-uat.sh` before production deployments
+2. **Use safe production deployment**: Use `./deploy-prod.sh` for important releases (includes confirmations)
+3. **Quick deployments for CI/CD**: Use `./deploy-simple-*` scripts for automated pipelines
+4. **Never guess environment**: Script names explicitly indicate target environment
+
+### Deployment Safety Features
+- **Human-in-the-loop**: Production scripts require explicit confirmation
+- **Environment validation**: Scripts verify correct project and service settings
+- **Health checks**: Automatic post-deployment verification
+- **Rollback capability**: Documented rollback procedures in case of issues
+
 ## Rules
 * Do not mention claude code in and comments or commits.
 * run linter before commit
+* Always use explicit deployment scripts - never create ambiguous script names

@@ -109,21 +109,51 @@ The application is production-ready and deployed on Google Cloud Run.
    - Docker and gcloud CLI installed
    - Gemini API key
 
-2. **One-time setup (includes secrets):**
+2. **Production deployment options:**
+   
+   **Safe production deployment (with confirmations):**
    ```bash
-   ./deploy.sh
+   ./deploy-prod.sh
+   ```
+   
+   **Quick production deployment (no prompts):**
+   ```bash
+   ./deploy-simple-prod.sh
    ```
 
-3. **Quick updates:**
+3. **UAT deployment options:**
+   
+   **Full UAT deployment (with detailed logging):**
    ```bash
-   ./deploy-simple.sh
+   ./deploy-uat.sh
    ```
+   
+   **Quick UAT deployment (streamlined):**
+   ```bash
+   ./deploy-simple-uat.sh
+   ```
+
+## 📋 Deployment Scripts Reference
+
+The project includes four deployment scripts with explicit environment targeting:
+
+| Script | Environment | Purpose | Prompts | Resources |
+|--------|-------------|---------|---------|-----------|
+| `deploy-prod.sh` | Production | Safe deployment with human-in-the-loop safeguards | ✅ Yes | 2Gi RAM, 2 CPU |
+| `deploy-simple-prod.sh` | Production | Quick deployment for CI/CD pipelines | ❌ No | 2Gi RAM, 2 CPU |
+| `deploy-uat.sh` | UAT | Full UAT deployment with detailed logging | ✅ Yes | 1Gi RAM, 1 CPU |
+| `deploy-simple-uat.sh` | UAT | Streamlined UAT deployment | ❌ No | 1Gi RAM, 1 CPU |
+
+**Environment Mapping:**
+- **Production**: Service `ai-top-trumps-card-generator` with bucket `cards_storage-whispers-of-the-wildwood`
+- **UAT**: Service `ai-top-trumps-card-generator-uat` with bucket `cards_storage-uat-whispers-of-the-wildwood`
 
 The deployment scripts handle:
 - Container building and registry push
 - Secret management via Google Secret Manager  
 - Cloud Run service configuration
 - Health check verification
+- Environment-specific resource allocation
 
 ## 🛠️ Tech Stack
 
@@ -205,8 +235,8 @@ The application is optimized for Google Cloud Run deployment with automatic scal
    # Create Gemini API secret
    echo -n 'YOUR_GEMINI_API_KEY' | gcloud secrets create gemini-api-key --data-file=-
    
-   # Deploy to Cloud Run
-   ./deploy-simple.sh
+   # Deploy to Cloud Run (Production)
+   ./deploy-simple-prod.sh
    ```
 
 3. **What the deployment includes:**
