@@ -132,7 +132,8 @@ export async function listCards(series = null) {
     const cards = [];
     
     if (series) {
-      const seriesPath = path.join(CARDS_PATH, series);
+      const sanitizedSeries = series.replace(/[^a-zA-Z0-9-_]/g, '_');
+      const seriesPath = path.join(CARDS_PATH, sanitizedSeries);
       if (fs.existsSync(seriesPath)) {
         const files = fs.readdirSync(seriesPath);
         for (const file of files) {

@@ -45,7 +45,8 @@ function buildSecureCardPrompt(themeName: string, imageStyleName: string, statNa
     'Minimalist Geometric': 'minimalist geometric design, clean lines, simple shapes, abstract representation',
     'Retro 80s Synthwave': 'retro 80s synthwave aesthetic, neon grids, sunset background, vibrant pinks and purples',
     'Watercolor Artistic': 'artistic watercolor rendering, soft edges, beautiful color blending, expressive brushstrokes',
-    'Steampunk Mechanical': 'steampunk mechanical illustration, gears, cogs, brass and copper details, intricate machinery'
+    'Steampunk Mechanical': 'steampunk mechanical illustration, gears, cogs, brass and copper details, intricate machinery',
+    'Neonpunk Transformer': 'neonpunk transformer robot, glowing neon circuitry, mechanical cyberpunk aesthetic, electric glow effects'
   };
   
   const themePrompt = themeTemplates[themeName as keyof typeof themeTemplates] || themeTemplates['Fantasy'];

@@ -5,6 +5,48 @@ const API_BASE_URL = typeof window !== 'undefined' && window.location.hostname =
   ? 'http://localhost:3001'
   : '';
 
+// Error codes for better debugging
+export enum StorageErrorCode {
+  AUTH_TOKEN_MISSING = 'AUTH_TOKEN_MISSING',
+  AUTH_TOKEN_EXPIRED = 'AUTH_TOKEN_EXPIRED',
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  SERVER_ERROR = 'SERVER_ERROR',
+  INVALID_RESPONSE = 'INVALID_RESPONSE',
+  STORAGE_BACKEND_ERROR = 'STORAGE_BACKEND_ERROR',
+  PERMISSION_DENIED = 'PERMISSION_DENIED',
+  RATE_LIMITED = 'RATE_LIMITED',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
+}
+
+export class StorageError extends Error {
+  constructor(
+    message: string,
+    public code: StorageErrorCode,
+    public statusCode?: number,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'StorageError';
+  }
+
+  static fromFetchError(error: Error, context: string): StorageError {
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      return new StorageError(
+        `Network connection failed while ${context}. Please check your internet connection.`,
+        StorageErrorCode.NETWORK_ERROR,
+        undefined,
+        { originalError: error.message }
+      );
+    }
+    return new StorageError(
+      `Unknown error while ${context}: ${error.message}`,
+      StorageErrorCode.UNKNOWN_ERROR,
+      undefined,
+      { originalError: error.message }
+    );
+  }
+}
+
 export interface SaveCardResponse {
   success: boolean;
   cardId: string;
@@ -22,9 +64,24 @@ export interface ListCardsResponse {
 class CardStorageService {
   private getAuthHeaders() {
     const token = authService.getToken();
+    const isAuthenticated = authService.isAuthenticated();
+    
+    console.log(`🔐 Auth check: token=${token ? 'present' : 'missing'}, isAuthenticated=${isAuthenticated}`);
+    
     if (!token) {
-      throw new Error('No authentication token available');
+      throw new StorageError(
+        'You must be logged in to access your saved cards. Please log in and try again.',
+        StorageErrorCode.AUTH_TOKEN_MISSING
+      );
     }
+    
+    if (!isAuthenticated) {
+      throw new StorageError(
+        'Your session has expired. Please log in again to access your saved cards.',
+        StorageErrorCode.AUTH_TOKEN_EXPIRED
+      );
+    }
+    
     return {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
@@ -32,61 +89,182 @@ class CardStorageService {
   }
 
   async saveCard(cardData: StoredCardData): Promise<SaveCardResponse> {
+    const startTime = Date.now();
+    const url = `${API_BASE_URL}/api/cards`;
+    
+    console.log(`💾 Attempting to save card: ${cardData.title} (${cardData.id})`);
+    console.log(`📡 Request URL: ${url}`);
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/api/cards`, {
+      const headers = this.getAuthHeaders();
+      const response = await fetch(url, {
         method: 'POST',
-        headers: this.getAuthHeaders(),
+        headers,
         body: JSON.stringify(cardData)
       });
 
+      const duration = Date.now() - startTime;
+      console.log(`⏱️ Save card request took ${duration}ms, status: ${response.status}`);
+
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Authentication required. Please log in again.');
-        }
         const errorText = await response.text();
-        throw new Error(`Failed to save card: ${response.status} ${errorText}`);
+        console.error(`❌ Save card failed: ${response.status} ${errorText}`);
+        
+        if (response.status === 401) {
+          throw new StorageError(
+            'Your session has expired. Please log in again to save cards.',
+            StorageErrorCode.AUTH_TOKEN_EXPIRED,
+            401
+          );
+        } else if (response.status === 403) {
+          throw new StorageError(
+            'Permission denied. You don\'t have access to save cards.',
+            StorageErrorCode.PERMISSION_DENIED,
+            403
+          );
+        } else if (response.status === 429) {
+          throw new StorageError(
+            'Too many requests. Please wait a moment before trying again.',
+            StorageErrorCode.RATE_LIMITED,
+            429
+          );
+        } else if (response.status >= 500) {
+          throw new StorageError(
+            'Server error while saving card. Please try again later.',
+            StorageErrorCode.SERVER_ERROR,
+            response.status,
+            { responseText: errorText }
+          );
+        } else {
+          throw new StorageError(
+            `Failed to save card: ${errorText || 'Unknown server error'}`,
+            StorageErrorCode.STORAGE_BACKEND_ERROR,
+            response.status,
+            { responseText: errorText }
+          );
+        }
       }
 
       const result: SaveCardResponse = await response.json();
+      console.log(`✅ Card saved successfully: ${result.cardId}`);
       return result;
 
     } catch (error) {
-      console.error('Error saving card:', error);
-      if (error instanceof Error) {
+      const duration = Date.now() - startTime;
+      console.error(`❌ Error saving card after ${duration}ms:`, error);
+      
+      if (error instanceof StorageError) {
         throw error;
       }
-      throw new Error('Failed to save card: Unknown error');
+      
+      if (error instanceof Error) {
+        throw StorageError.fromFetchError(error, 'saving card');
+      }
+      
+      throw new StorageError(
+        'An unexpected error occurred while saving the card',
+        StorageErrorCode.UNKNOWN_ERROR,
+        undefined,
+        { originalError: String(error) }
+      );
     }
   }
 
   async listCards(series?: string): Promise<StoredCardData[]> {
-    try {
-      const url = new URL(`${API_BASE_URL}/api/cards`);
-      if (series) {
-        url.searchParams.set('series', series);
-      }
+    const startTime = Date.now();
+    
+    // Build URL string first, then create URL object if needed
+    let urlString = `${API_BASE_URL}/api/cards`;
+    if (series) {
+      const separator = urlString.includes('?') ? '&' : '?';
+      urlString += `${separator}series=${encodeURIComponent(series)}`;
+    }
+    
+    console.log(`📚 Attempting to list cards${series ? ` for series: ${series}` : ' (all series)'}`);
+    console.log(`📡 Request URL: ${urlString}`);
 
-      const response = await fetch(url.toString(), {
+    try {
+      const headers = this.getAuthHeaders();
+      const response = await fetch(urlString, {
         method: 'GET',
-        headers: this.getAuthHeaders()
+        headers
       });
 
+      const duration = Date.now() - startTime;
+      console.log(`⏱️ List cards request took ${duration}ms, status: ${response.status}`);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ List cards failed: ${response.status} ${errorText}`);
+        
         if (response.status === 401) {
-          throw new Error('Authentication required. Please log in again.');
+          throw new StorageError(
+            'Your session has expired. Please log in again to view your saved cards.',
+            StorageErrorCode.AUTH_TOKEN_EXPIRED,
+            401
+          );
+        } else if (response.status === 403) {
+          throw new StorageError(
+            'Permission denied. You don\'t have access to view cards.',
+            StorageErrorCode.PERMISSION_DENIED,
+            403
+          );
+        } else if (response.status === 429) {
+          throw new StorageError(
+            'Too many requests. Please wait a moment before trying again.',
+            StorageErrorCode.RATE_LIMITED,
+            429
+          );
+        } else if (response.status >= 500) {
+          throw new StorageError(
+            'Server error while loading cards. The storage system may be temporarily unavailable.',
+            StorageErrorCode.SERVER_ERROR,
+            response.status,
+            { responseText: errorText }
+          );
+        } else {
+          throw new StorageError(
+            `Failed to load cards: ${errorText || 'Unknown server error'}`,
+            StorageErrorCode.STORAGE_BACKEND_ERROR,
+            response.status,
+            { responseText: errorText }
+          );
         }
-        throw new Error(`Failed to list cards: ${response.status}`);
       }
 
       const result: ListCardsResponse = await response.json();
+      
+      if (!result || !Array.isArray(result.cards)) {
+        console.error('❌ Invalid response format:', result);
+        throw new StorageError(
+          'Invalid response from server. The card data format is corrupted.',
+          StorageErrorCode.INVALID_RESPONSE,
+          response.status,
+          { response: result }
+        );
+      }
+      
+      console.log(`✅ Successfully loaded ${result.cards.length} cards (total: ${result.total})`);
       return result.cards;
 
     } catch (error) {
-      console.error('Error listing cards:', error);
-      if (error instanceof Error) {
+      const duration = Date.now() - startTime;
+      console.error(`❌ Error listing cards after ${duration}ms:`, error);
+      
+      if (error instanceof StorageError) {
         throw error;
       }
-      throw new Error('Failed to list cards: Unknown error');
+      
+      if (error instanceof Error) {
+        throw StorageError.fromFetchError(error, 'loading cards');
+      }
+      
+      throw new StorageError(
+        'An unexpected error occurred while loading your saved cards',
+        StorageErrorCode.UNKNOWN_ERROR,
+        undefined,
+        { originalError: String(error) }
+      );
     }
   }
 

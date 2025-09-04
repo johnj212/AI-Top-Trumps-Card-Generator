@@ -134,7 +134,7 @@ export async function saveLog(logLevel, message, metadata = {}) {
  */
 export async function listCards(series = null) {
   try {
-    const prefix = series ? `cards/${series}/` : 'cards/';
+    const prefix = series ? `cards/${series.replace(/[^a-zA-Z0-9-_]/g, '_')}/` : 'cards/';
     const [files] = await bucket.getFiles({ prefix });
     
     const cards = [];

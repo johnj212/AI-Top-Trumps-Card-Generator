@@ -1,5 +1,5 @@
 // Main CardPreview component
-const CardPreview: React.FC<CardPreviewProps> = ({ cardData, colorScheme, isImageLoading = false }) => {
+const CardPreview: React.FC<CardPreviewProps> = ({ cardData, colorScheme, isImageLoading = false, hideDownloadButton = false }) => {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   
@@ -36,17 +36,19 @@ const CardPreview: React.FC<CardPreviewProps> = ({ cardData, colorScheme, isImag
         </div>
       )}
       
-      {/* Download button */}
-      <button 
-        onClick={handleDownload}
-        disabled={isExporting || isImageLoading}
-        className="absolute top-2 left-2 z-40 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-500 text-white rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-105 disabled:hover:scale-100"
-        title="Download card as image"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-        </svg>
-      </button>
+      {/* Download button - only show if not hidden */}
+      {!hideDownloadButton && (
+        <button 
+          onClick={handleDownload}
+          disabled={isExporting || isImageLoading}
+          className="absolute top-2 left-2 z-40 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-500 text-white rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-105 disabled:hover:scale-100"
+          title="Download card as image"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+          </svg>
+        </button>
+      )}
 
       <div 
         ref={cardRef}
@@ -122,6 +124,7 @@ interface CardPreviewProps {
   cardData: CardData;
   colorScheme: ColorScheme;
   isImageLoading?: boolean;
+  hideDownloadButton?: boolean;
 }
 
 const StatBar: React.FC<{ value: number, color: string }> = ({ value, color }) => {

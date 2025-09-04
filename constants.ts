@@ -27,6 +27,7 @@ export const IMAGE_STYLES: ImageStyle[] = [
     { name: 'Retro 80s Synthwave', promptSuffix: 'retro 80s synthwave aesthetic, neon grids, sunset background, vibrant pinks and purples' },
     { name: 'Watercolor Artistic', promptSuffix: 'artistic watercolor rendering, soft edges, beautiful color blending, expressive brushstrokes' },
     { name: 'Steampunk Mechanical', promptSuffix: 'steampunk mechanical illustration, gears, cogs, brass and copper details, intricate machinery' },
+    { name: 'Neonpunk Transformer', promptSuffix: 'neonpunk transformer robot, glowing neon circuitry, mechanical cyberpunk aesthetic, electric glow effects' },
 ];
 
 export const DEFAULT_CARD_DATA: CardData = {

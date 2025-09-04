@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { StoredCardData, ColorScheme } from '../types';
 import { cardRecreationService, type RecreatedCard } from '../services/cardRecreationService';
+import { StorageError, StorageErrorCode } from '../services/cardStorageService';
 import CardPreview from './CardPreview';
 import Loader from './Loader';
 import { COLOR_SCHEMES } from '../constants';
@@ -11,12 +12,21 @@ interface CardLibraryProps {
   onCardSelect?: (card: RecreatedCard) => void;
 }
 
+interface ErrorState {
+  message: string;
+  code?: StorageErrorCode;
+  canRetry?: boolean;
+  actionLabel?: string;
+  statusCode?: number;
+}
+
 const CardLibrary: React.FC<CardLibraryProps> = ({ isOpen, onClose, onCardSelect }) => {
   const [recreatedCards, setRecreatedCards] = useState<RecreatedCard[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorState | null>(null);
   const [selectedSeries, setSelectedSeries] = useState<string>('all');
   const [seriesList, setSeriesList] = useState<string[]>([]);
+  const [storageHealth, setStorageHealth] = useState<any>(null);
   const [stats, setStats] = useState<{
     totalCards: number;
     recreatableCards: number;
@@ -31,9 +41,61 @@ const CardLibrary: React.FC<CardLibraryProps> = ({ isOpen, onClose, onCardSelect
     }
   }, [isOpen]);
 
+  const parseStorageError = (err: any): ErrorState => {
+    if (err instanceof StorageError) {
+      let actionLabel = 'Try Again';
+      let canRetry = true;
+      
+      switch (err.code) {
+        case StorageErrorCode.AUTH_TOKEN_MISSING:
+        case StorageErrorCode.AUTH_TOKEN_EXPIRED:
+          actionLabel = 'Log In';
+          canRetry = false;
+          break;
+        case StorageErrorCode.NETWORK_ERROR:
+          actionLabel = 'Check Connection';
+          break;
+        case StorageErrorCode.RATE_LIMITED:
+          actionLabel = 'Wait & Retry';
+          break;
+        case StorageErrorCode.SERVER_ERROR:
+          actionLabel = 'Try Later';
+          break;
+      }
+      
+      return {
+        message: err.message,
+        code: err.code,
+        canRetry,
+        actionLabel,
+        statusCode: err.statusCode
+      };
+    }
+    
+    return {
+      message: err instanceof Error ? err.message : 'Failed to load cards from storage',
+      canRetry: true,
+      actionLabel: 'Try Again'
+    };
+  };
+
+  const checkStorageHealth = async () => {
+    try {
+      const response = await fetch('/api/storage/health');
+      const health = await response.json();
+      setStorageHealth(health);
+      return health;
+    } catch (error) {
+      console.warn('Could not check storage health:', error);
+      return null;
+    }
+  };
+
   const loadCards = async (series?: string) => {
     setIsLoading(true);
     setError(null);
+    
+    console.log(`📚 CardLibrary: Loading cards${series ? ` for series: ${series}` : ' (all series)'}`);
     
     try {
       let cards: RecreatedCard[];
@@ -44,14 +106,25 @@ const CardLibrary: React.FC<CardLibraryProps> = ({ isOpen, onClose, onCardSelect
       }
       
       setRecreatedCards(cards);
+      console.log(`✅ CardLibrary: Successfully loaded ${cards.length} cards`);
       
-      // Extract unique series from loaded cards
-      const uniqueSeries = Array.from(new Set(cards.map(c => c.cardData.series)));
-      setSeriesList(uniqueSeries);
+      // Only update series list when loading ALL cards, not when filtering by specific series
+      if (!series || series === 'all') {
+        const uniqueSeries = Array.from(new Set(cards.map(c => c.cardData.series)));
+        setSeriesList(uniqueSeries);
+        console.log(`📊 Updated series list with ${uniqueSeries.length} unique series:`, uniqueSeries);
+      } else {
+        console.log(`🔍 Filtered by series "${series}", preserving existing series list`);
+      }
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load cards');
+      console.error('❌ CardLibrary: Failed to load cards:', err);
+      const errorState = parseStorageError(err);
+      setError(errorState);
       setRecreatedCards([]);
+      
+      // Check storage health for additional diagnostics
+      await checkStorageHealth();
     } finally {
       setIsLoading(false);
     }
@@ -73,6 +146,16 @@ const CardLibrary: React.FC<CardLibraryProps> = ({ isOpen, onClose, onCardSelect
   const handleSeriesChange = (series: string) => {
     setSelectedSeries(series);
     loadCards(series);
+  };
+
+  const handleRetry = () => {
+    if (error?.code === StorageErrorCode.AUTH_TOKEN_MISSING || error?.code === StorageErrorCode.AUTH_TOKEN_EXPIRED) {
+      // Redirect to login or show login modal
+      window.location.reload(); // Simple solution - reload to show login
+      return;
+    }
+    
+    loadCards(selectedSeries === 'all' ? undefined : selectedSeries);
   };
 
   const getColorSchemeForCard = (card: RecreatedCard): ColorScheme => {
@@ -121,8 +204,17 @@ const CardLibrary: React.FC<CardLibraryProps> = ({ isOpen, onClose, onCardSelect
             <button
               onClick={() => loadCards(selectedSeries)}
               className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
+              disabled={isLoading}
             >
-              Refresh
+              {isLoading ? 'Loading...' : 'Refresh'}
+            </button>
+            
+            <button
+              onClick={() => checkStorageHealth()}
+              className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm"
+              title="Check storage system health"
+            >
+              🔍 Health
             </button>
           </div>
         </div>
@@ -132,8 +224,71 @@ const CardLibrary: React.FC<CardLibraryProps> = ({ isOpen, onClose, onCardSelect
           {isLoading && <Loader message="Loading saved cards..." />}
           
           {error && (
-            <div className="bg-red-800 border border-red-600 text-white px-4 py-3 rounded-lg mb-4">
-              <strong>Error:</strong> {error}
+            <div className="mb-4">
+              <div className="bg-red-800 border border-red-600 text-white px-4 py-3 rounded-lg">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center mb-2">
+                      <span className="text-lg mr-2">
+                        {error.code === StorageErrorCode.AUTH_TOKEN_MISSING || error.code === StorageErrorCode.AUTH_TOKEN_EXPIRED ? '🔐' :
+                         error.code === StorageErrorCode.NETWORK_ERROR ? '🌐' :
+                         error.code === StorageErrorCode.SERVER_ERROR ? '💻' :
+                         error.code === StorageErrorCode.RATE_LIMITED ? '⏱️' : '⚠️'}
+                      </span>
+                      <strong>Unable to Load Cards</strong>
+                    </div>
+                    <p className="text-sm opacity-90 mb-3">{error.message}</p>
+                    
+                    {error.code && (
+                      <div className="text-xs opacity-75 mb-3">
+                        Error Code: {error.code}
+                        {error.statusCode && ` (HTTP ${error.statusCode})`}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={handleRetry}
+                        className="bg-red-700 hover:bg-red-600 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+                      >
+                        {error.actionLabel || 'Try Again'}
+                      </button>
+                      
+                      <button
+                        onClick={() => checkStorageHealth()}
+                        className="bg-gray-600 hover:bg-gray-500 text-white px-3 py-1 rounded text-sm transition-colors"
+                      >
+                        Check Status
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Storage Health Details */}
+              {storageHealth && storageHealth.status !== 'healthy' && (
+                <div className="mt-3 bg-gray-800 border border-gray-600 text-gray-300 px-4 py-3 rounded-lg text-sm">
+                  <div className="flex items-center mb-2">
+                    <span className="mr-2">
+                      {storageHealth.status === 'healthy' ? '✅' :
+                       storageHealth.status === 'degraded' ? '⚠️' : '❌'}
+                    </span>
+                    <strong>Storage System Status: {storageHealth.status}</strong>
+                  </div>
+                  
+                  {storageHealth.checks && Object.entries(storageHealth.checks).map(([key, check]: [string, any]) => (
+                    check.status === 'fail' && (
+                      <div key={key} className="ml-6 text-xs opacity-75">
+                        • {key}: {check.message}
+                      </div>
+                    )
+                  ))}
+                  
+                  <div className="text-xs opacity-50 mt-2">
+                    Last checked: {new Date(storageHealth.timestamp).toLocaleTimeString()}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -152,6 +307,7 @@ const CardLibrary: React.FC<CardLibraryProps> = ({ isOpen, onClose, onCardSelect
                     <CardPreview
                       cardData={recreatedCard.cardData}
                       colorScheme={getColorSchemeForCard(recreatedCard)}
+                      hideDownloadButton={true}
                     />
                   </div>
                   

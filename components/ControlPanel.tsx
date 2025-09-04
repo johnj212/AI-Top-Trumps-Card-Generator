@@ -118,14 +118,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                     <GenerateIcon className="w-7 h-7" />
                     {isLoading ? 'Generating...' : 'Generate Preview Card'}
                 </button>
-                <button 
-                    onClick={onGeneratePack} 
-                    disabled={isLoading || !isPreviewGenerated} 
-                    className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-orange-600 hover:bg-orange-700 rounded-lg text-xl font-bold transition-all duration-200 disabled:bg-gray-500 disabled:cursor-not-allowed transform hover:scale-105"
-                >
-                    <GenerateIcon className="w-7 h-7" />
-                    Generate Full Pack (3 more)
-                </button>
                 {onOpenLibrary && (
                     <button 
                         onClick={onOpenLibrary} 

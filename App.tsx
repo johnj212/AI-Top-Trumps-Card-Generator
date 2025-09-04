@@ -150,6 +150,7 @@ function App() {
   }, []);
 
   const handleGeneratePreview = async () => {
+    console.log('🎯 handleGeneratePreview called, shouldSaveCards:', shouldSaveCards);
     setIsLoading(true);
     setError(null);
     setGeneratedCards([]);
@@ -184,6 +185,29 @@ function App() {
       setPreviewCard(newPreviewCardData); // Save for the final pack
       setPreviewCardPrompt(cardIdea.imagePrompt); // Store the prompt for later saving
 
+      // Save preview card to storage if enabled
+      if (shouldSaveCards) {
+        try {
+          setLoadingMessage('Saving preview card to storage...');
+          console.log('💾 Saving preview card to storage:', newPreviewCardData.title);
+          
+          const storedCard = cardStorageService.enhanceCardWithStorageData(
+            newPreviewCardData,
+            selectedTheme.name,
+            selectedColorScheme.name,
+            selectedImageStyle.name,
+            cardIdea.imagePrompt
+          );
+          
+          await cardStorageService.saveCard(storedCard);
+          console.log('✅ Preview card saved to storage successfully:', newPreviewCardData.title);
+          
+        } catch (saveError) {
+          console.warn('⚠️ Failed to save preview card to storage:', saveError);
+          // Don't show error to user as generation was successful
+        }
+      }
+
     } catch (e: any) {
       setError(e.message || 'An unknown error occurred during preview generation.');
     } finally {
@@ -193,6 +217,7 @@ function App() {
   };
 
   const handleGeneratePack = async () => {
+    console.log('🎯 handleGeneratePack called, shouldSaveCards:', shouldSaveCards, 'previewCard:', previewCard?.title);
     if (!previewCard) {
         setError("Please generate a preview card first.");
         return;
@@ -244,9 +269,11 @@ function App() {
         setGeneratedCards(newCards);
 
         // Save cards to storage if enabled
+        console.log(`💾 Pack generation complete. shouldSaveCards: ${shouldSaveCards}, cards count: ${newCards.length}`);
         if (shouldSaveCards) {
           try {
-            setLoadingMessage('Saving cards to storage...');
+            setLoadingMessage('Saving pack cards to storage...');
+            console.log('💾 Saving pack cards to storage:', newCards.map(c => c.title));
             
             const storedCards: StoredCardData[] = newCards.map((card, index) => 
               cardStorageService.enhanceCardWithStorageData(
@@ -259,12 +286,14 @@ function App() {
             );
             
             await cardStorageService.saveCardPack(storedCards);
-            console.log('✅ Cards saved to storage successfully');
+            console.log('✅ Pack cards saved to storage successfully:', storedCards.length, 'cards');
             
           } catch (saveError) {
-            console.warn('⚠️ Failed to save cards to storage:', saveError);
+            console.error('❌ Failed to save pack cards to storage:', saveError);
             // Don't show error to user as generation was successful
           }
+        } else {
+          console.log('⚠️ Card saving is disabled, skipping storage');
         }
 
     } catch (e: any) {
