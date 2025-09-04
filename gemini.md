@@ -7,7 +7,7 @@
 - The backend exposes a single endpoint: `/api/generate`.
 - Requests must include:
     - `prompt`: The prompt string for Gemini.
-    - `modelName`: The Gemini model to use (`gemini-2.5-flash` for text/stats, `imagen-3.0-generate-002` for images).
+    - `modelName`: The Gemini model to use (`gemini-2.5-flash` for text/stats, `imagen-4.0-generate-001` for images).
 
 ## Response Shapes
 
@@ -31,7 +31,7 @@
 
 ### Image Generation
 - **Request:**
-    - `modelName: 'imagen-3.0-generate-002'`
+    - `modelName: 'imagen-4.0-generate-001'`
     - `prompt`: The image prompt string.
 - **Backend Response:**
     - `{ kind: 'image', mime: 'image/jpeg', data: '<base64>' }`

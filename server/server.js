@@ -40,7 +40,7 @@ try {
   console.log('⚙️ Configuring Express middleware...');
   
   app.use(cors());
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' })); // Increase limit for base64 images
 
   // Trust proxy for accurate IP addresses (important for rate limiting)
   app.set('trust proxy', 1);
@@ -148,7 +148,7 @@ app.post('/api/generate', verifyToken, async (req, res) => {
       endpoint: req.path
     });
 
-    if (modelName === 'imagen-3.0-generate-002') {
+    if (modelName === 'imagen-4.0-generate-001') {
       const imageResult = await model.generateImages({
         model: modelName,
         prompt: prompt,
@@ -323,40 +323,245 @@ app.post('/api/cards', verifyToken, async (req, res) => {
 
 // Get stored cards (with optional series filter)
 app.get('/api/cards', verifyToken, async (req, res) => {
+  const startTime = Date.now();
+  const requestId = Math.random().toString(36).substr(2, 9);
+  
   try {
     const { series, limit = 50 } = req.query;
+    const userContext = getUserContext(req);
     
-    console.log(`📚 Listing cards ${series ? `for series: ${series}` : '(all series)'}`);
+    console.log(`📚 [${requestId}] Cards list request started:`);
+    console.log(`   User: ${userContext.playerCode || 'unknown'} (IP: ${userContext.ipAddress})`);
+    console.log(`   Series: ${series || 'all'}`);
+    console.log(`   Limit: ${limit}`);
+    console.log(`   Headers: ${JSON.stringify({
+      authorization: req.headers.authorization ? 'Bearer [REDACTED]' : 'none',
+      'user-agent': req.headers['user-agent']?.substring(0, 50) + '...',
+      'content-type': req.headers['content-type']
+    })}`);
     
     const cards = await listCards(series);
     const limitedCards = cards.slice(0, parseInt(limit));
     
-    await saveLog('info', 'Cards listed', {
-      ...getUserContext(req),
+    const duration = Date.now() - startTime;
+    console.log(`✅ [${requestId}] Cards list completed in ${duration}ms:`);
+    console.log(`   Found: ${cards.length} cards`);
+    console.log(`   Returned: ${limitedCards.length} cards`);
+    console.log(`   Series breakdown: ${Array.from(new Set(cards.map(c => c.series))).join(', ')}`);
+    
+    await saveLog('info', 'Cards listed successfully', {
+      ...userContext,
+      requestId,
       series,
       totalFound: cards.length,
       returned: limitedCards.length,
-      endpoint: req.path
+      durationMs: duration,
+      endpoint: req.path,
+      seriesBreakdown: Array.from(new Set(cards.map(c => c.series)))
     });
     
-    res.json({
+    const response = {
       success: true,
       cards: limitedCards,
       total: cards.length,
-      series: series || 'all'
-    });
+      series: series || 'all',
+      requestId,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log(`📤 [${requestId}] Sending response: ${JSON.stringify({
+      ...response,
+      cards: `[${response.cards.length} cards]` // Don't log full card data
+    })}`);
+    
+    res.json(response);
     
   } catch (error) {
-    console.error('Error listing cards:', error);
+    const duration = Date.now() - startTime;
+    const userContext = getUserContext(req);
+    
+    console.error(`❌ [${requestId}] Cards list failed after ${duration}ms:`, error);
+    console.error(`   Error type: ${error.constructor.name}`);
+    console.error(`   Error message: ${error.message}`);
+    console.error(`   Stack trace: ${error.stack}`);
     
     await saveLog('error', 'Failed to list cards', {
-      ...getUserContext(req),
+      ...userContext,
+      requestId,
       error: error.message,
+      errorType: error.constructor.name,
       series: req.query.series,
-      endpoint: req.path
+      durationMs: duration,
+      endpoint: req.path,
+      stackTrace: error.stack
     });
     
-    res.status(500).json({ error: 'Failed to list cards', details: error.message });
+    // Determine appropriate error response based on error type
+    let statusCode = 500;
+    let errorMessage = 'Failed to list cards';
+    
+    if (error.message.includes('authentication') || error.message.includes('token')) {
+      statusCode = 401;
+      errorMessage = 'Authentication required';
+    } else if (error.message.includes('permission') || error.message.includes('access')) {
+      statusCode = 403;
+      errorMessage = 'Access denied';
+    } else if (error.message.includes('network') || error.message.includes('connection')) {
+      statusCode = 503;
+      errorMessage = 'Storage service unavailable';
+    }
+    
+    const errorResponse = {
+      error: errorMessage,
+      details: error.message,
+      requestId,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log(`📤 [${requestId}] Sending error response (${statusCode}):`, errorResponse);
+    res.status(statusCode).json(errorResponse);
+  }
+});
+
+// Storage health check endpoint
+app.get('/api/storage/health', async (req, res) => {
+  const startTime = Date.now();
+  const healthCheck = {
+    timestamp: new Date().toISOString(),
+    status: 'healthy',
+    checks: {},
+    environment: process.env.NODE_ENV,
+    duration: 0
+  };
+
+  try {
+    console.log('🏥 Running storage health check...');
+
+    // 1. Check storage initialization
+    try {
+      console.log('1️⃣ Testing storage initialization...');
+      // Test storage by calling a simple storage function
+      await getStorageStats();
+      healthCheck.checks.initialization = { status: 'pass', message: 'Storage backend initialized successfully' };
+    } catch (error) {
+      healthCheck.checks.initialization = { status: 'fail', message: error.message };
+      healthCheck.status = 'unhealthy';
+    }
+
+    // 2. Check authentication middleware
+    try {
+      console.log('2️⃣ Testing authentication...');
+      const token = req.headers.authorization;
+      if (token && token.startsWith('Bearer ')) {
+        healthCheck.checks.auth = { status: 'pass', message: 'Authentication token provided' };
+      } else {
+        healthCheck.checks.auth = { status: 'warn', message: 'No authentication token (health check does not require auth)' };
+      }
+    } catch (error) {
+      healthCheck.checks.auth = { status: 'fail', message: error.message };
+    }
+
+    // 3. Check storage stats (basic connectivity)
+    try {
+      console.log('3️⃣ Testing storage connectivity...');
+      const stats = await getStorageStats();
+      if (stats && typeof stats === 'object') {
+        healthCheck.checks.connectivity = { 
+          status: 'pass', 
+          message: `Connected to ${stats.bucketName || 'storage backend'}`,
+          details: {
+            totalFiles: stats.totalFiles,
+            images: stats.images,
+            cards: stats.cards
+          }
+        };
+      } else {
+        healthCheck.checks.connectivity = { status: 'warn', message: 'Storage stats returned but format unexpected' };
+      }
+    } catch (error) {
+      healthCheck.checks.connectivity = { status: 'fail', message: error.message };
+      healthCheck.status = 'unhealthy';
+    }
+
+    // 4. Test list cards operation (read test)
+    try {
+      console.log('4️⃣ Testing card listing...');
+      const cards = await listCards();
+      healthCheck.checks.readOperation = { 
+        status: 'pass', 
+        message: `Successfully listed ${cards?.length || 0} cards`
+      };
+    } catch (error) {
+      healthCheck.checks.readOperation = { status: 'fail', message: error.message };
+      if (healthCheck.status !== 'unhealthy') {
+        healthCheck.status = 'degraded';
+      }
+    }
+
+    // 5. Environment variables check
+    console.log('5️⃣ Checking environment configuration...');
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
+    if (isDevelopment) {
+      // Development environment - no special requirements
+      healthCheck.checks.environment = { status: 'pass', message: 'Development environment - no special requirements' };
+    } else {
+      // Production/UAT environment - check required variables
+      const requiredVars = ['STORAGE_BUCKET'];
+      const missingVars = requiredVars.filter(varName => !process.env[varName]);
+      
+      // Check for Google Cloud authentication
+      const hasCredentialsFile = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      const isCloudRun = !!(process.env.K_SERVICE || process.env.GAE_SERVICE);
+      
+      if (missingVars.length === 0 && (hasCredentialsFile || isCloudRun)) {
+        const authMethod = hasCredentialsFile ? 'credentials file' : 'Cloud Run service account';
+        healthCheck.checks.environment = { 
+          status: 'pass', 
+          message: `Environment configured correctly (auth: ${authMethod})`,
+          details: {
+            storageBucket: process.env.STORAGE_BUCKET,
+            authMethod,
+            isCloudRun
+          }
+        };
+      } else {
+        const issues = [];
+        if (missingVars.length > 0) {
+          issues.push(`Missing variables: ${missingVars.join(', ')}`);
+        }
+        if (!hasCredentialsFile && !isCloudRun) {
+          issues.push('No Google Cloud authentication available');
+        }
+        
+        healthCheck.checks.environment = { 
+          status: 'fail', 
+          message: issues.join('; ')
+        };
+        healthCheck.status = 'unhealthy';
+      }
+    }
+
+    healthCheck.duration = Date.now() - startTime;
+    
+    // Log overall health status
+    const statusEmoji = healthCheck.status === 'healthy' ? '✅' : 
+                       healthCheck.status === 'degraded' ? '⚠️' : '❌';
+    console.log(`${statusEmoji} Storage health check complete: ${healthCheck.status} (${healthCheck.duration}ms)`);
+
+    // Return appropriate HTTP status
+    const httpStatus = healthCheck.status === 'healthy' ? 200 : 
+                      healthCheck.status === 'degraded' ? 207 : 503;
+    
+    res.status(httpStatus).json(healthCheck);
+    
+  } catch (error) {
+    healthCheck.duration = Date.now() - startTime;
+    healthCheck.status = 'unhealthy';
+    healthCheck.checks.overall = { status: 'fail', message: error.message };
+    
+    console.error('❌ Storage health check failed:', error);
+    res.status(503).json(healthCheck);
   }
 });
 

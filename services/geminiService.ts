@@ -304,9 +304,9 @@ export async function generateImage(prompt: string, cardId: string, series: stri
   }
   
   try {
-    const responseText = await callApi(prompt, 'imagen-3.0-generate-002', {
+    const responseText = await callApi(prompt, 'imagen-4.0-generate-001', {
       prompt,
-      modelName: 'imagen-3.0-generate-002',
+      modelName: 'imagen-4.0-generate-001',
       cardId,
       series
     });

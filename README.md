@@ -23,7 +23,7 @@ A state-of-the-art AI-powered web application that generates professional-qualit
 -   **💾 Session Management**: Persistent login state with automatic token validation
 -   **⚡ Rate Limiting**: Global rate limit of 100 requests per day to prevent abuse and control costs
 -   **🤖 AI-Powered Content Generation**: Utilizes `gemini-2.5-flash` to dynamically generate thematic statistics and full card packs with unique titles and values.
--   **🎨 Stunning AI Image Generation**: Leverages `imagen-3.0-generate-002` to create high-quality, custom artwork for each card based on dynamic prompts.
+-   **🎨 Stunning AI Image Generation**: Leverages `imagen-4.0-generate-001` (Imagen 4 Fast) to create high-quality, custom artwork for each card based on dynamic prompts.
 -   **👀 Live Interactive Preview**: Instantly see how your card looks with a beautiful initial preview that loads immediately.
 -   **🎛️ Deep Customization**:
     -   Choose from a variety of themes (Dinosaurs, Fantasy, Automotive, Aircraft, Pokémon).
@@ -170,7 +170,7 @@ The deployment scripts handle:
 ### AI Integration
 - **Google Gemini API** (`@google/genai`)
   - **Text Generation**: `gemini-2.5-flash` for statistics and card content
-  - **Image Generation**: `imagen-3.0-generate-002` for high-quality artwork
+  - **Image Generation**: `imagen-4.0-generate-001` (Imagen 4 Fast) for high-quality artwork
 - **Response Processing**: Custom JSON parsing with comprehensive error handling
 - **Sequential Generation**: Card-by-card processing for improved reliability
 
@@ -354,7 +354,7 @@ RateLimit-Reset: 86400
 ```json
 {
   "prompt": "Your generation prompt",
-  "modelName": "gemini-2.5-flash" | "imagen-3.0-generate-002"
+  "modelName": "gemini-2.5-flash" | "imagen-4.0-generate-001"
 }
 ```
 

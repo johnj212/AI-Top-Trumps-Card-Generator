@@ -60,4 +60,4 @@
 
 The research shows that **Google Imagen 4 Fast at $0.02 per image** offers excellent value for high-volume use cases, while **OpenAI DALL-E 3** provides reliable enterprise-grade service at $0.04-0.12 per image depending on resolution and quality settings.
 
-For your current AI Top Trumps project using Imagen 3.0 at $0.03 per image, you're in a competitive pricing tier. Consider upgrading to **Imagen 4 Fast** for better cost efficiency or **Imagen 4** for improved quality at only $0.01 more per image.
+Your current AI Top Trumps project now uses **Imagen 4 Fast** at $0.02 per image, providing excellent cost efficiency and faster generation compared to the previous Imagen 3.0 implementation at $0.03 per image.
