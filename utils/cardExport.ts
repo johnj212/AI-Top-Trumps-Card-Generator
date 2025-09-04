@@ -8,9 +8,103 @@ export interface ExportOptions {
   filename?: string;
 }
 
-// Mobile device detection
+// Mobile device detection with improved accuracy
 const isMobileDevice = (): boolean => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  // Check multiple indicators for better mobile detection
+  const userAgent = navigator.userAgent.toLowerCase();
+  const mobileKeywords = ['android', 'webos', 'iphone', 'ipad', 'ipod', 'blackberry', 'iemobile', 'opera mini'];
+  const hasMobileUserAgent = mobileKeywords.some(keyword => userAgent.includes(keyword));
+  
+  // Also check for touch support and screen size as additional indicators
+  const hasTouchSupport = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  const hasSmallScreen = window.screen.width <= 1024; // Common tablet/mobile breakpoint
+  
+  return hasMobileUserAgent || (hasTouchSupport && hasSmallScreen);
+};
+
+// Check if Web Share API is available and supports file sharing
+const supportsWebShare = (): boolean => {
+  return 'share' in navigator && 'canShare' in navigator;
+};
+
+// Check if Web Share API supports file sharing specifically
+const supportsWebShareFiles = async (): Promise<boolean> => {
+  if (!supportsWebShare()) return false;
+  
+  try {
+    // Create a test file to check file sharing support
+    const testBlob = new Blob(['test'], { type: 'text/plain' });
+    const testFile = new File([testBlob], 'test.txt', { type: 'text/plain' });
+    return navigator.canShare({ files: [testFile] });
+  } catch {
+    return false;
+  }
+};
+
+// Modern mobile download approach with Web Share API and fallbacks
+const downloadWithModernApproach = async (
+  dataURL: string, 
+  filename: string, 
+  cardData: CardData
+): Promise<void> => {
+  try {
+    // Option 1: Web Share API (most modern and user-friendly)
+    if (await supportsWebShareFiles()) {
+      // Convert data URL to blob
+      const response = await fetch(dataURL);
+      const blob = await response.blob();
+      const file = new File([blob], filename, { type: blob.type });
+      
+      await navigator.share({
+        title: `${cardData.title} - AI Top Trumps Card`,
+        text: `Check out my ${cardData.series} card: ${cardData.title}!`,
+        files: [file]
+      });
+      return; // Success with native sharing
+    }
+    
+    // Option 2: Direct blob download (no popups)
+    await downloadWithBlob(dataURL, filename);
+    
+  } catch (error) {
+    // Handle user cancellation gracefully - don't show as an error
+    if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('Share canceled'))) {
+      console.log('User canceled share dialog');
+      return; // Don't fallback to download if user intentionally canceled
+    }
+    
+    console.warn('Modern download methods failed, using fallback:', error);
+    // Option 3: Fallback - still try direct download instead of popup
+    await downloadWithBlob(dataURL, filename);
+  }
+};
+
+// Blob-based download that works on mobile without popups
+const downloadWithBlob = async (dataURL: string, filename: string): Promise<void> => {
+  try {
+    // Convert data URL to blob
+    const response = await fetch(dataURL);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    
+    // Create download link
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    
+    // Add to DOM, click, and cleanup
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up the blob URL
+    URL.revokeObjectURL(url);
+    
+  } catch (error) {
+    console.error('Blob download failed:', error);
+    throw new Error('Download failed. Please try again.');
+  }
 };
 
 // Low-end device detection
@@ -63,9 +157,13 @@ export const exportCardAsImage = async (
   const isMobile = isMobileDevice();
   let originalTransform = '';
   
-  // Declare style variables for cleanup
+  // Declare style variables for cleanup at function scope
   let originalTitleStyle = '';
   let originalRarityStyle = '';
+  let originalTitleClass = '';
+  let originalTitleContainerStyle = '';
+  let originalSeriesStyle = '';
+  let originalCardNumberStyle = '';
   
   if (isMobile) {
     // Prevent scroll during generation
@@ -91,11 +189,7 @@ export const exportCardAsImage = async (
     const seriesElement = cardElement.querySelector('[class*="bottom-2 left-2"]');
     const cardNumberElement = cardElement.querySelector('[class*="bottom-2 right-2"]');
     
-    // Store original states
-    let originalTitleClass = '';
-    let originalTitleContainerStyle = '';
-    let originalSeriesStyle = '';
-    let originalCardNumberStyle = '';
+    // Store original states (variables already declared at function scope)
     
     if (titleElement) {
       originalTitleStyle = titleElement.style.cssText;
@@ -196,6 +290,14 @@ export const exportCardAsImage = async (
 
   } catch (error) {
     console.error('Card export failed:', error);
+    console.error('Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      cardElement: cardElement ? 'Present' : 'Missing',
+      cardElementTag: cardElement?.tagName || 'Unknown',
+      cardElementClasses: cardElement?.className || 'No classes'
+    });
     
     // Restore original styles even on error
     const titleElement = cardElement.querySelector('h1');
@@ -260,31 +362,9 @@ export const downloadCardImage = async (
     const filename = options.filename || `${sanitizedTitle}_${cardData.series}_${timestamp}`;
     const format = options.format || getDeviceOptimizedConfig().format || 'png';
     
-    // Mobile-friendly download approach
+    // Modern mobile-friendly download approach
     if (isMobileDevice()) {
-      // On mobile, open in new tab for user to save manually
-      const newWindow = window.open();
-      if (newWindow) {
-        newWindow.document.write(`
-          <html>
-            <head>
-              <title>${cardData.title} - ${cardData.series}</title>
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                body { margin: 0; padding: 20px; background: #000; text-align: center; }
-                img { max-width: 100%; height: auto; border-radius: 12px; }
-                p { color: white; font-family: Arial, sans-serif; margin: 20px 0; }
-                .instructions { font-size: 14px; color: #ccc; }
-              </style>
-            </head>
-            <body>
-              <p>${cardData.title} - ${cardData.series}</p>
-              <img src="${dataURL}" alt="${cardData.title}" />
-              <p class="instructions">Long press the image to save to your device</p>
-            </body>
-          </html>
-        `);
-      }
+      await downloadWithModernApproach(dataURL, `${filename}.${format}`, cardData);
     } else {
       // Desktop download
       const link = document.createElement('a');
@@ -306,10 +386,15 @@ export const getDeviceInfo = () => {
   return {
     isMobile: isMobileDevice(),
     isLowEnd: isLowEndDevice(),
+    supportsWebShare: supportsWebShare(),
     devicePixelRatio: window.devicePixelRatio,
     screenSize: `${window.screen.width}x${window.screen.height}`,
     hardwareConcurrency: navigator.hardwareConcurrency,
     deviceMemory: (navigator as any).deviceMemory || 'unknown',
+    touchSupport: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
     recommendedConfig: getDeviceOptimizedConfig()
   };
 };
+
+// Export helper functions for external use
+export { supportsWebShare, supportsWebShareFiles };

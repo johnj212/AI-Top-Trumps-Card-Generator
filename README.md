@@ -32,7 +32,10 @@ A state-of-the-art AI-powered web application that generates professional-qualit
 -   **📦 Full Pack Generation**: Create a set of 4 unique cards, starting with your customized preview card.
 -   **☁️ Cloud Storage Integration**: Persistent storage for generated images and card data via Google Cloud Storage.
 -   **⚡ Production Ready**: Deployed on Google Cloud Run with optimized performance and scalability.
--   **📱 Mobile Optimized**: Responsive design that works perfectly on all devices.
+-   **📱 Enhanced Mobile Experience**: Responsive design optimized for all devices with native mobile capabilities.
+-   **📲 iPhone "Save to Photos"**: Direct integration with iOS Photos app via Web Share API for seamless saving.
+-   **🚫 Popup-Free Downloads**: Modern blob-based downloads eliminate browser popup blocking issues.
+-   **🔗 Native Sharing**: Web Share API integration provides platform-native sharing experience on supported devices.
 -   **🔄 Sequential Generation**: Reliable card-by-card generation for better success rates.
 
 ## 🚀 How to Use

@@ -19,7 +19,7 @@
 - Requests must include:
     - `Authorization: Bearer <jwt-token>` header (REQUIRED)
     - `prompt`: The prompt string for Gemini.
-    - `modelName`: The Gemini model to use (`gemini-2.5-flash` for text/stats, `imagen-3.0-generate-002` for images).
+    - `modelName`: The Gemini model to use (`gemini-2.5-flash` for text/stats, `imagen-4.0-generate-001` for images).
 
 ## Response Shapes
 
@@ -43,7 +43,7 @@
 
 ### Image Generation
 - **Request:**
-    - `modelName: 'imagen-3.0-generate-002'`
+    - `modelName: 'imagen-4.0-generate-001'`
     - `prompt`: The image prompt string.
 - **Backend Response:**
     - `{ kind: 'image', mime: 'image/jpeg', data: '<base64>' }`
@@ -78,6 +78,11 @@
 - Always test both stats and image generation after any change.
 
 ## Recent Development History
+* ✅ **Mobile Download Improvements (v1.2.0)** - Enhanced iPhone integration with Web Share API and popup-free downloads (Sep 4, 2025)
+* ✅ **iPhone "Save to Photos" Integration** - Direct Photos app saving via Web Share API with graceful cancellation handling (Sep 4, 2025)  
+* ✅ **Web Share API Implementation** - Native mobile sharing experience with file sharing capabilities (Sep 4, 2025)
+* ✅ **Share Cancellation Fix** - Graceful handling of user share dialog cancellations without fallback errors (Sep 4, 2025)
+* ✅ **Enhanced Mobile Detection** - Improved device detection using multiple indicators for better mobile experience (Sep 4, 2025)
 * ✅ **Deployment Script Restructuring** - Fixed ambiguous deployment script naming to prevent production confusion (Sep 3, 2025)
 * ✅ **Google Cloud Logging Fix** - Fixed log append behavior to prevent overwriting previous logs (Sep 2025)
 * ✅ **Color Scheme Border Fix** - Fixed Green-Brown and Red-Gold color schemes to use proper accent borders (Sep 2025)
@@ -106,7 +111,7 @@
 * ✅ **Child-Friendly Security** - Login system designed for 12-year-old target audience
 * ✅ **Session Management** - Persistent login state with automatic token validation
 * ✅ **AI-powered card content generation** using `gemini-2.5-flash`
-* ✅ **AI image generation** using `imagen-3.0-generate-002`
+* ✅ **AI image generation** using `imagen-4.0-generate-001` (Imagen 4 Fast)
 * ✅ **Live interactive preview system** with immediate initial preview
 * ✅ **Full pack generation** (4 cards per pack) with sequential processing
 * ✅ **Theme-based stat generation** with 5 themes (Dinosaurs, Fantasy, Automotive, Aircraft, Pokémon)
@@ -173,7 +178,7 @@
 
 ### AI Integration Details
 * **Text Generation**: `gemini-2.5-flash` for stats and card ideas
-* **Image Generation**: `imagen-3.0-generate-002` with 3:4 aspect ratio configuration
+* **Image Generation**: `imagen-4.0-generate-001` (Imagen 4 Fast) with 3:4 aspect ratio configuration
 * **Response Format**: Standardized `{ kind, data }` structure
 * **Error Handling**: Comprehensive parsing with fallback error responses
 
@@ -227,10 +232,12 @@ The project uses explicit environment naming to prevent deployment confusion:
   - Secret: `gemini-api-key-uat`
 
 ### Deployment Best Practices
-1. **Always test in UAT first**: Use `./deploy-uat.sh` before production deployments
-2. **Use safe production deployment**: Use `./deploy-prod.sh` for important releases (includes confirmations)
-3. **Quick deployments for CI/CD**: Use `./deploy-simple-*` scripts for automated pipelines
-4. **Never guess environment**: Script names explicitly indicate target environment
+1. **Always test in development first**: Test all changes thoroughly in local development environment before any deployment
+2. **Development → UAT → Production workflow**: Use `./deploy-uat.sh` before production deployments  
+3. **Use safe production deployment**: Use `./deploy-prod.sh` for important releases (includes confirmations)
+4. **Quick deployments for CI/CD**: Use `./deploy-simple-*` scripts for automated pipelines
+5. **Never guess environment**: Script names explicitly indicate target environment
+6. **Verify functionality**: Test key features (card generation, storage, Card Library) after each deployment stage
 
 ### Deployment Safety Features
 - **Human-in-the-loop**: Production scripts require explicit confirmation

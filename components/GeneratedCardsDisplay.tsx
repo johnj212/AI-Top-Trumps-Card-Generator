@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import type { CardData, ColorScheme } from '../types';
 import CardPreview from './CardPreview';
-import { exportCardAsImage, getDeviceInfo } from '../utils/cardExport';
+import { exportCardAsImage, getDeviceInfo, downloadCardImage } from '../utils/cardExport';
 
 interface GeneratedCardsDisplayProps {
   cards: CardData[];
@@ -14,13 +14,22 @@ const GeneratedCardsDisplay: React.FC<GeneratedCardsDisplayProps> = ({ cards, co
 
   // Bulk download all cards with mobile optimization
   const handleBulkDownload = async () => {
+    const deviceInfo = getDeviceInfo();
+    const isMobile = deviceInfo.isMobile;
+    
+    // Show confirmation dialog for mobile users to explain the process
+    if (isMobile) {
+      const confirmed = window.confirm(
+        `You're about to download ${cards.length} cards. On mobile devices, you may be prompted to save each card individually. This is normal and prevents popup blocking issues. Continue?`
+      );
+      if (!confirmed) return;
+    }
+    
     setIsBulkExporting(true);
     try {
-      const deviceInfo = getDeviceInfo();
       console.log('Starting bulk export with device info:', deviceInfo);
       
       // On mobile devices, process cards one by one to prevent memory issues
-      const isMobile = deviceInfo.isMobile;
       const batchSize = isMobile ? 1 : 2; // Process 1-2 cards at a time
       
       for (let i = 0; i < cards.length; i += batchSize) {
@@ -37,26 +46,13 @@ const GeneratedCardsDisplay: React.FC<GeneratedCardsDisplayProps> = ({ cards, co
             }
             
             try {
-              const dataURL = await exportCardAsImage(cardElement, card);
-              
-              // Mobile-friendly approach - create download links
-              const link = document.createElement('a');
-              const sanitizedTitle = card.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-              link.download = `${sanitizedTitle}_${card.series}_${card.cardNumber}.png`;
-              link.href = dataURL;
-              
-              if (isMobile) {
-                // On mobile, open in new window for manual save
-                window.open(dataURL, '_blank');
-              } else {
-                // Desktop auto-download
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              }
+              // Use the improved downloadCardImage function that handles mobile properly
+              await downloadCardImage(cardElement, card, {
+                filename: `${card.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${card.series}_${card.cardNumber}`
+              });
               
               // Small delay between downloads to prevent browser throttling
-              await new Promise(resolve => setTimeout(resolve, 200));
+              await new Promise(resolve => setTimeout(resolve, 500));
               
             } catch (error) {
               console.error(`Failed to export card ${card.title}:`, error);
