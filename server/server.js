@@ -2,6 +2,8 @@
 import express from 'express';
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from '@google/genai';
 import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -38,9 +40,45 @@ if (!process.env.GEMINI_API_KEY) {
 
 try {
   console.log('⚙️ Configuring Express middleware...');
-  
-  app.use(cors());
-  app.use(express.json({ limit: '10mb' })); // Increase limit for base64 images
+
+  // Configure CORS with specific allowed origins for security
+  const corsOptions = {
+    origin: process.env.ALLOWED_ORIGINS
+      ? process.env.ALLOWED_ORIGINS.split(',')
+      : [
+          'https://ai-top-trumps-card-generator-50477513015.europe-north1.run.app',
+          'https://ai-top-trumps-card-generator-uat-50477513015.europe-north1.run.app',
+          'http://localhost:8088',
+          'http://localhost:3001'
+        ],
+    credentials: true,
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  };
+  app.use(cors(corsOptions));
+  console.log('🔒 CORS configured with allowed origins:', corsOptions.origin);
+
+  // Add security headers with helmet
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://esm.sh"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        connectSrc: ["'self'", "https://generativelanguage.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"]
+      }
+    },
+    crossOriginEmbedderPolicy: false
+  }));
+  console.log('🛡️ Security headers configured with helmet');
+
+  // Add cookie parser for httpOnly cookie authentication
+  app.use(cookieParser());
+  console.log('🍪 Cookie parser configured');
+
+  app.use(express.json({ limit: '5mb' })); // Reduced from 10mb for security (base64 images)
 
   // Trust proxy for accurate IP addresses (important for rate limiting)
   app.set('trust proxy', 1);
@@ -595,8 +633,13 @@ app.get('/api/images/:series/:date/:filename', async (req, res) => {
     const { series, date, filename } = req.params;
     const imagePath = `images/${series}/${date}/${filename}`;
     console.log(`🖼️ Requesting image: ${imagePath}`);
-    
-    if (!imagePath || !imagePath.startsWith('images/')) {
+
+    // Enhanced path traversal protection
+    const normalizedPath = path.normalize(imagePath);
+    if (!normalizedPath.startsWith('images/') ||
+        normalizedPath.includes('..') ||
+        normalizedPath.includes('~')) {
+      console.warn(`⚠️ Path traversal attempt blocked: ${imagePath}`);
       return res.status(400).json({ error: 'Invalid image path' });
     }
     
@@ -626,28 +669,21 @@ app.get('/api/images/:series/:date/:filename', async (req, res) => {
   }
 });
 
-// Health check endpoint
+// Health check endpoint - sanitized to minimize information disclosure
 app.get('/api/health', async (req, res) => {
   try {
+    // Only return minimal information for security
     const health = {
       status: 'healthy',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      memory: process.memoryUsage(),
-      env: {
-        hasGeminiKey: !!process.env.GEMINI_API_KEY,
-        hasStorageCredentials: !!process.env.GOOGLE_APPLICATION_CREDENTIALS,
-        storageBucket: process.env.STORAGE_BUCKET || 'cards_stroage'
-      }
+      timestamp: new Date().toISOString()
     };
-    
+
     res.json(health);
-    
+
   } catch (error) {
     console.error('Health check failed:', error);
-    res.status(500).json({ 
-      status: 'unhealthy', 
-      error: error.message,
+    res.status(500).json({
+      status: 'unhealthy',
       timestamp: new Date().toISOString()
     });
   }
