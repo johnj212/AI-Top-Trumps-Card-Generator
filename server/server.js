@@ -51,6 +51,7 @@ try {
           'https://ai-top-trumps-card-generator-50477513015.europe-north1.run.app',
           'https://ai-top-trumps-card-generator-uat-50477513015.europe-north1.run.app',
           'http://localhost:8088',
+          'http://localhost:8089',
           'http://localhost:3001'
         ],
     credentials: true,

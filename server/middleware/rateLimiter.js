@@ -8,14 +8,15 @@ const getClientIdentifier = (req, res) => {
   if (req.playerData && req.playerData.playerCode) {
     return `player:${req.playerData.playerCode}`;
   }
-  
+
   // For development, use a simple key to avoid IPv6 validation
   if (process.env.NODE_ENV === 'development') {
     return 'dev-user';
   }
-  
-  // Use the request IP for production (let express-rate-limit handle IPv6)
-  return req.ip;
+
+  // For production, use standard IP address handling
+  // express-rate-limit will handle IPv6 addresses correctly if we don't provide a custom key
+  return undefined; // Let express-rate-limit use default IP handling
 };
 
 // Global rate limiter - 100 requests per day per user/IP
@@ -68,13 +69,10 @@ export const globalRateLimiter = rateLimit({
     if (process.env.NODE_ENV === 'development') {
       return true;
     }
-    return req.path === '/api/health' || 
+    return req.path === '/api/health' ||
            req.path === '/api/auth/validate' ||
            (req.path === '/api/auth/login' && req.method === 'POST');
-  },
-
-  // Skip validation in non-development environments to avoid compatibility issues
-  ...(process.env.NODE_ENV === 'development' ? {} : { validate: false })
+  }
 });
 
 // Speed limiter - slow down requests after 50 requests
@@ -93,13 +91,10 @@ export const speedLimiter = slowDown({
     if (process.env.NODE_ENV === 'development') {
       return true;
     }
-    return req.path === '/api/health' || 
+    return req.path === '/api/health' ||
            req.path === '/api/auth/validate' ||
            (req.path === '/api/auth/login' && req.method === 'POST');
-  },
-
-  // Skip validation in non-development environments to avoid compatibility issues
-  ...(process.env.NODE_ENV === 'development' ? {} : { validate: false })
+  }
 });
 
 // Middleware to log successful requests with rate limit headers

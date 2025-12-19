@@ -92,7 +92,8 @@ function App() {
   };
 
   const handleAuthError = (errorMessage: string) => {
-    setError(errorMessage);
+    // Treat empty strings as null to clear the error
+    setError(errorMessage || null);
   };
 
   const handleLoadCard = (recreatedCard: RecreatedCard) => {

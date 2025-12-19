@@ -14,17 +14,19 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onError }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!playerCode.trim()) {
       onError('Please enter your player code');
       return;
     }
 
+    // Clear any previous errors before attempting login
+    onError('');
     setIsLoading(true);
 
     try {
       const result = await authService.login(playerCode.trim());
-      
+
       if (result.success && result.playerData) {
         onLogin(result.playerData);
       } else {
