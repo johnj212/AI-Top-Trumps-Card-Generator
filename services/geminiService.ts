@@ -104,12 +104,11 @@ async function callApi(prompt: string, modelName: string, customBody?: any) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch(API_URL, authService.getAuthFetchOptions({
         method: 'POST',
-        headers: authService.getAuthHeaders(),
         body: JSON.stringify(customBody || { prompt, modelName }),
         signal: controller.signal,
-      });
+      }));
       clearTimeout(timeout);
 
       if (!response.ok) {

@@ -1,11 +1,23 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'ai-top-trumps-secret-key-2025';
+// Require JWT_SECRET environment variable - no fallback for security
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('❌ FATAL: JWT_SECRET environment variable is not set');
+  process.exit(1);
+}
+
 const VALID_PLAYER_CODE = 'TIGER34';
 
 export const verifyToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
+  // Try to get token from httpOnly cookie first, then fallback to Authorization header
+  let token = req.cookies?.auth_token;
+
+  // Fallback to Authorization header for backward compatibility during transition
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    token = authHeader && authHeader.split(' ')[1];
+  }
 
   if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' });

@@ -34,6 +34,14 @@ router.post('/login', async (req, res) => {
     // Generate JWT token
     const token = generateToken(normalizedCode);
 
+    // Set httpOnly cookie for secure token storage
+    res.cookie('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'uat',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    });
+
     await saveLog('info', 'Successful login', {
       playerCode: normalizedCode,
       clientIP: req.ip,
@@ -42,7 +50,7 @@ router.post('/login', async (req, res) => {
 
     res.json({
       success: true,
-      token,
+      token, // Still include token for backward compatibility during transition
       playerData: {
         playerCode: normalizedCode,
         createdAt: new Date().toISOString(),
@@ -66,19 +74,27 @@ router.post('/login', async (req, res) => {
 
 // Validate token endpoint (for checking if current token is valid)
 router.get('/validate', async (req, res) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
+  // Try to get token from cookie first, then fallback to Authorization header
+  let token = req.cookies?.auth_token;
 
   if (!token) {
-    return res.status(401).json({ 
-      success: false, 
-      error: 'No token provided' 
+    const authHeader = req.headers.authorization;
+    token = authHeader && authHeader.split(' ')[1];
+  }
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      error: 'No token provided'
     });
   }
 
   try {
     const jwt = await import('jsonwebtoken');
-    const JWT_SECRET = process.env.JWT_SECRET || 'ai-top-trumps-secret-key-2025';
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+      throw new Error('JWT_SECRET not configured');
+    }
     const decoded = jwt.default.verify(token, JWT_SECRET);
 
     await saveLog('info', 'Token validation successful', {
@@ -102,6 +118,37 @@ router.get('/validate', async (req, res) => {
     res.status(403).json({
       success: false,
       error: 'Invalid or expired token'
+    });
+  }
+});
+
+// Logout endpoint - clear the httpOnly cookie
+router.post('/logout', async (req, res) => {
+  try {
+    const playerCode = req.playerData?.playerCode || 'unknown';
+
+    // Clear the auth cookie
+    res.clearCookie('auth_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'uat',
+      sameSite: 'lax'
+    });
+
+    await saveLog('info', 'User logged out', {
+      playerCode,
+      clientIP: req.ip
+    });
+
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'An error occurred during logout'
     });
   }
 });

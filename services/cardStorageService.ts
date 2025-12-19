@@ -62,30 +62,20 @@ export interface ListCardsResponse {
 }
 
 class CardStorageService {
-  private getAuthHeaders() {
-    const token = authService.getToken();
+  private getAuthFetchOptions(options: RequestInit = {}): RequestInit {
     const isAuthenticated = authService.isAuthenticated();
-    
-    console.log(`🔐 Auth check: token=${token ? 'present' : 'missing'}, isAuthenticated=${isAuthenticated}`);
-    
-    if (!token) {
+
+    console.log(`🔐 Auth check: isAuthenticated=${isAuthenticated}`);
+
+    if (!isAuthenticated) {
       throw new StorageError(
         'You must be logged in to access your saved cards. Please log in and try again.',
         StorageErrorCode.AUTH_TOKEN_MISSING
       );
     }
-    
-    if (!isAuthenticated) {
-      throw new StorageError(
-        'Your session has expired. Please log in again to access your saved cards.',
-        StorageErrorCode.AUTH_TOKEN_EXPIRED
-      );
-    }
-    
-    return {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    };
+
+    // Use authService helper that includes credentials for httpOnly cookies
+    return authService.getAuthFetchOptions(options);
   }
 
   async saveCard(cardData: StoredCardData): Promise<SaveCardResponse> {
@@ -96,12 +86,10 @@ class CardStorageService {
     console.log(`📡 Request URL: ${url}`);
     
     try {
-      const headers = this.getAuthHeaders();
-      const response = await fetch(url, {
+      const response = await fetch(url, this.getAuthFetchOptions({
         method: 'POST',
-        headers,
         body: JSON.stringify(cardData)
-      });
+      }));
 
       const duration = Date.now() - startTime;
       console.log(`⏱️ Save card request took ${duration}ms, status: ${response.status}`);
@@ -184,11 +172,9 @@ class CardStorageService {
     console.log(`📡 Request URL: ${urlString}`);
 
     try {
-      const headers = this.getAuthHeaders();
-      const response = await fetch(urlString, {
-        method: 'GET',
-        headers
-      });
+      const response = await fetch(urlString, this.getAuthFetchOptions({
+        method: 'GET'
+      }));
 
       const duration = Date.now() - startTime;
       console.log(`⏱️ List cards request took ${duration}ms, status: ${response.status}`);

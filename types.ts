@@ -67,7 +67,6 @@ export interface PlayerData {
 export interface AuthState {
   isAuthenticated: boolean;
   playerCode?: string;
-  token?: string;
 }
 
 export interface LoginRequest {

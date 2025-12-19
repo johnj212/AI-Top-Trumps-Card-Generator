@@ -26,8 +26,7 @@ function App() {
   // Authentication state
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
-    playerCode: undefined,
-    token: undefined
+    playerCode: undefined
   });
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -57,8 +56,7 @@ function App() {
           if (currentPlayerData) {
             setAuthState({
               isAuthenticated: true,
-              playerCode: currentPlayerData.playerCode,
-              token: authService.getToken()
+              playerCode: currentPlayerData.playerCode
             });
             setPlayerData(currentPlayerData);
           }
@@ -74,18 +72,17 @@ function App() {
   const handleLogin = (loginPlayerData: PlayerData) => {
     setAuthState({
       isAuthenticated: true,
-      playerCode: loginPlayerData.playerCode,
-      token: authService.getToken()
+      playerCode: loginPlayerData.playerCode
     });
     setPlayerData(loginPlayerData);
     setError(null);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await authService.logout();
     setAuthState({
       isAuthenticated: false,
-      playerCode: undefined,
-      token: undefined
+      playerCode: undefined
     });
     setPlayerData(null);
     // Clear game state
