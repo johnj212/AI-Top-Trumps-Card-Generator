@@ -98,7 +98,7 @@ gcloud run deploy $SERVICE_NAME \
     --region $REGION \
     --service-account github-actions@$PROJECT_ID.iam.gserviceaccount.com \
     --set-env-vars "NODE_ENV=production,STORAGE_BUCKET=cards_storage-whispers-of-the-wildwood" \
-    --set-secrets "GEMINI_API_KEY=gemini-api-key:latest" \
+    --set-secrets "JWT_SECRET=jwt-secret:latest,GEMINI_API_KEY=gemini-api-key:latest" \
     --memory 2Gi \
     --cpu 2 \
     --timeout 900 \

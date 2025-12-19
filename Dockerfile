@@ -4,9 +4,13 @@ WORKDIR /app
 
 # Copy package files for better Docker layer caching
 COPY package*.json ./
+COPY server/package*.json ./server/
 
 # Install all dependencies (including dev dependencies for build)
 RUN npm ci
+
+# Install server dependencies
+RUN cd server && npm ci && cd ..
 
 # Copy source files
 COPY . .
@@ -16,6 +20,7 @@ RUN npm run build
 
 # Remove dev dependencies after build to reduce image size
 RUN npm ci --only=production && npm cache clean --force
+RUN cd server && npm ci --only=production && cd ..
 
 # Clean up unnecessary files for smaller image
 RUN rm -rf node_modules/.cache \
