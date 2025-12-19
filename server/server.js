@@ -1,19 +1,21 @@
 
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Load environment variables BEFORE importing modules that depend on them
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
 import express from 'express';
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from '@google/genai';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { saveImage, saveCard, saveLog, listCards, getStorageStats, getImageSignedUrl } from './storage-wrapper.js';
 import { verifyToken } from './middleware/authMiddleware.js';
 import { globalRateLimiter, speedLimiter, rateLimitLogger } from './middleware/rateLimiter.js';
 import authRoutes from './auth/auth.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 console.log('🚀 Starting AI Top Trumps server...');
 console.log('📍 Working directory:', process.cwd());
