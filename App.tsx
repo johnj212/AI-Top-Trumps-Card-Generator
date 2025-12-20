@@ -93,7 +93,9 @@ function App() {
 
   const handleAuthError = (errorMessage: string) => {
     // Treat empty strings as null to clear the error
+    console.log('handleAuthError called with:', errorMessage);
     setError(errorMessage || null);
+    console.log('Error state set to:', errorMessage || null);
   };
 
   const handleLoadCard = (recreatedCard: RecreatedCard) => {

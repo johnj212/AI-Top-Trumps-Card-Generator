@@ -33,6 +33,7 @@ class AuthService {
       });
 
       const data: LoginResponse = await response.json();
+      console.log('Login response:', { status: response.status, data });
 
       if (data.success && data.playerData) {
         this.playerData = data.playerData;
