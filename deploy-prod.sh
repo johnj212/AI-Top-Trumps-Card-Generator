@@ -30,7 +30,8 @@ echo -e "${BLUE}📊 Current Production Status:${NC}"
 CURRENT_URL=$(gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(status.url)' 2>/dev/null || echo "Service not found")
 if [ "$CURRENT_URL" != "Service not found" ]; then
     echo "   🌐 Current URL: $CURRENT_URL"
-    echo "   🏥 Current Health: $(curl -s --max-time 5 "$CURRENT_URL/api/health" | jq -r '.status // "Unknown"' 2>/dev/null || echo "Could not check")"
+    CURRENT_HEALTH=$(curl -s --max-time 5 "$CURRENT_URL/api/health" | jq -r '.status // "Unknown"' 2>/dev/null || echo "Could not check")
+    echo "   🏥 Current Health: $CURRENT_HEALTH"
     
     # Get current service details
     CURRENT_IMAGE=$(gcloud run services describe $SERVICE_NAME --platform managed --region $REGION --format 'value(spec.template.spec.template.spec.containers[0].image)' 2>/dev/null || echo "Unknown")
@@ -116,7 +117,7 @@ SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --platform managed --re
 # Health check with retry logic
 echo "🏥 Testing health endpoint..."
 for i in {1..5}; do
-    if curl -s --max-time 10 "$SERVICE_URL/api/health" | grep -q "OK"; then
+    if curl -s --max-time 10 "$SERVICE_URL/api/health" | grep -q "healthy"; then
         echo -e "${GREEN}✅ Health check passed on attempt $i${NC}"
         HEALTH_OK=true
         break
@@ -145,7 +146,7 @@ sleep 5
 FINAL_HEALTH=$(curl -s --max-time 10 "$SERVICE_URL/api/health" | jq -r '.status // "Unknown"' 2>/dev/null || echo "Could not check")
 echo "   🏥 Final Health Status: $FINAL_HEALTH"
 
-if [ "$FINAL_HEALTH" = "OK" ]; then
+if [ "$FINAL_HEALTH" = "healthy" ]; then
     echo -e "${GREEN}🎉 PRODUCTION DEPLOYMENT SUCCESSFUL! 🎉${NC}"
 else
     echo -e "${YELLOW}⚠️ Deployment completed but health check uncertain${NC}"

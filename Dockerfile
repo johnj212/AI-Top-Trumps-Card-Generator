@@ -1,4 +1,7 @@
-FROM node:20-alpine
+FROM node:22.14.0-alpine
+
+# Upgrade npm to 11.7.0
+RUN npm install -g npm@11.7.0
 
 WORKDIR /app
 
@@ -19,8 +22,8 @@ COPY . .
 RUN npm run build
 
 # Remove dev dependencies after build to reduce image size
-RUN npm ci --only=production && npm cache clean --force
-RUN cd server && npm ci --only=production && cd ..
+RUN npm ci --omit=dev && npm cache clean --force
+RUN cd server && npm ci --omit=dev && cd ..
 
 # Clean up unnecessary files for smaller image
 RUN rm -rf node_modules/.cache \
