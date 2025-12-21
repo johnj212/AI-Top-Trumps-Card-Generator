@@ -8,6 +8,12 @@ SERVICE_NAME="ai-top-trumps-card-generator"
 REGION="europe-north1"
 IMAGE_NAME="gcr.io/$PROJECT_ID/$SERVICE_NAME"
 
+# Check for skip prompts flag
+SKIP_PROMPTS=false
+if [ "$1" = "--skip-prompts" ] || [ "$1" = "-y" ] || [ "$1" = "--yes" ]; then
+    SKIP_PROMPTS=true
+fi
+
 # ANSI color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -63,27 +69,33 @@ echo "   ⚡ Resources: 2Gi memory, 2 CPU, up to 10 instances"
 echo ""
 
 # Human confirmation
-echo -e "${BOLD}❓ Deployment Confirmation Required:${NC}"
-read -p "Have you tested this deployment in UAT environment? (yes/no): " uat_tested
-if [ "$uat_tested" != "yes" ]; then
-    echo -e "${RED}❌ Please test in UAT environment first using: ./deploy-uat.sh${NC}"
-    exit 1
-fi
+if [ "$SKIP_PROMPTS" = true ]; then
+    echo -e "${YELLOW}⚡ Skipping prompts mode enabled${NC}"
+    echo -e "${GREEN}✅ Proceeding with deployment without confirmation...${NC}"
+    echo ""
+else
+    echo -e "${BOLD}❓ Deployment Confirmation Required:${NC}"
+    read -p "Have you tested this deployment in UAT environment? (yes/no): " uat_tested
+    if [ "$uat_tested" != "yes" ]; then
+        echo -e "${RED}❌ Please test in UAT environment first using: ./deploy-uat.sh${NC}"
+        exit 1
+    fi
 
-read -p "Are you prepared for potential user impact during deployment? (yes/no): " user_impact_ok
-if [ "$user_impact_ok" != "yes" ]; then
-    echo -e "${RED}❌ Deployment cancelled by user${NC}"
-    exit 1
-fi
+    read -p "Are you prepared for potential user impact during deployment? (yes/no): " user_impact_ok
+    if [ "$user_impact_ok" != "yes" ]; then
+        echo -e "${RED}❌ Deployment cancelled by user${NC}"
+        exit 1
+    fi
 
-read -p "Do you want to proceed with PRODUCTION deployment? (yes/no): " final_confirm
-if [ "$final_confirm" != "yes" ]; then
-    echo -e "${RED}❌ Deployment cancelled by user${NC}"
-    exit 1
-fi
+    read -p "Do you want to proceed with PRODUCTION deployment? (yes/no): " final_confirm
+    if [ "$final_confirm" != "yes" ]; then
+        echo -e "${RED}❌ Deployment cancelled by user${NC}"
+        exit 1
+    fi
 
-echo -e "${GREEN}✅ Human confirmation received. Proceeding with deployment...${NC}"
-echo ""
+    echo -e "${GREEN}✅ Human confirmation received. Proceeding with deployment...${NC}"
+    echo ""
+fi
 
 # Build and push the container image
 echo -e "${BLUE}🏗️ Building container image...${NC}"
