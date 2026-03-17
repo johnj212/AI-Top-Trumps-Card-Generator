@@ -375,7 +375,7 @@ Authenticate with player code and receive JWT token
   "success": true,
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "playerData": {
-    "playerCode": "TIGER34",
+    "playerCode": "xxxxxx",
     "createdAt": "2025-09-02T18:24:52.142Z",
     "lastActive": "2025-09-02T18:24:52.142Z"
   }
