@@ -246,7 +246,7 @@ flowchart TD
 
     %% Auth + Rate Limiting
     subgraph Security ["🔐 Security Layer (every API call)"]
-        S1["JWT Auth\nPlayer Code: TIGER34\n24hr token expiry"]
+        S1["JWT Auth\nPlayer Code: xxxxxx\n24hr token expiry"]
         S2["Rate Limit: 100 req/day\nSpeed limit after 50/day"]
     end
 
@@ -365,7 +365,7 @@ Authenticate with player code and receive JWT token
 **Request Body:**
 ```json
 {
-  "playerCode": "TIGER34"
+  "playerCode": "xxxxxx"
 }
 ```
 
