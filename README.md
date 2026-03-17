@@ -8,6 +8,21 @@ A state-of-the-art AI-powered web application that generates professional-qualit
 
 > **🔐 Authentication Required**: The application now requires a player code to access all features. This ensures secure usage and prevents unauthorized access to AI services.
 
+## 🗺️ How It Works
+
+```mermaid
+flowchart TD
+    YOU(["🧒 You"])
+
+    YOU -->|"Pick a theme\ne.g. Dinosaurs"| APP1["🖥️ The App\npicks some stats"]
+    APP1 -->|"Click\n✨ Make Card"| AI1["🤖 AI Brain\ncomes up with a\ncool card idea"]
+    AI1 -->|"Card idea\nready!"| AI2["🎨 AI Artist\ndraws the picture"]
+    AI2 -->|"Picture\nready!"| CARD["🃏 Your Card\nappears!"]
+    CARD -->|"Click\n📦 Make Pack"| LOOP["🔁 Do it\n3 more times"]
+    LOOP --> AI1
+    LOOP -->|"All done!"| PACK["🎴🎴🎴🎴\nYour pack of\n4 cards!"]
+```
+
 [![React](https://img.shields.io/badge/React-19.1.1-blue)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8.2-blue)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green)](https://nodejs.org/)
