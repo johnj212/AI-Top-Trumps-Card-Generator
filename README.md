@@ -196,6 +196,85 @@ The deployment scripts handle:
 - **CSS Grid & Flexbox**: Modern layout techniques for precise positioning
 - **Rarity System**: Weighted random distribution with visual indicators
 
+## 🤖 AI Agent Workflow
+
+The diagram below shows how user actions chain through frontend functions, the backend API, and Gemini AI models to produce cards.
+
+```mermaid
+flowchart TD
+    %% User Actions
+    U1([User: Select Theme]) --> A1
+    U2([User: Click Generate Preview]) --> B1
+    U3([User: Click Generate Pack]) --> C1
+
+    %% Theme Selection Flow
+    A1["App.tsx: handleThemeChange()"]
+    A1 --> A2["generateStatsValues()\n(LOCAL — no API call)\ngeminiService.ts:153"]
+    A2 --> A3["Returns: Statistic[]\nwith random values 10–100"]
+    A3 --> A4["Update UI: cardData.stats"]
+
+    %% Preview Generation Flow
+    B1["App.tsx: handleGeneratePreview()"] --> B2
+
+    B2["buildSecureCardPrompt()\ngeminiService.ts:29\n─────────────────\nTheme template:\n• Automotive → 'Generate N automotive vehicles...'\n• Dinosaurs → 'Generate N prehistoric species...'\n• Pokémon → 'Generate N fictional creatures...'\n• Aircraft → 'Generate N aircraft concepts...'\n• Fantasy → 'Generate N fantasy creatures...'\n+\nStyle template (11 options e.g. Neon Cyberpunk, Vintage...)\n+\nStat names injected"]
+
+    B2 --> B3["generateCardIdeas()\ngeminiService.ts:172\ncallApi() → POST /api/generate"]
+
+    B3 --> API1
+
+    %% Backend
+    API1["Backend: POST /api/generate\nserver/server.js:163\n─────────────────\n🔐 verifyToken middleware\nModel: gemini-2.5-flash"]
+    API1 --> GEM1["Gemini API\ngemini-2.5-flash\n─────────────────\nReturns JSON:\n{ title, stats{}, imagePrompt }"]
+    GEM1 --> API1
+    API1 --> B4["Response:\n{ kind:'json', data: [CardIdea] }"]
+
+    B4 --> B5["generateImage(imagePrompt, cardId, series)\ngeminiService.ts:300\ncallApi() → POST /api/generate"]
+    B5 --> API2["Backend: POST /api/generate\nserver/server.js:163\n─────────────────\n🔐 verifyToken middleware\nModel: imagen-4.0-generate-001"]
+    API2 --> GEM2["Gemini API\nimagen-4.0-generate-001\n─────────────────\nReturns base64 JPEG (3:4)"]
+    GEM2 --> API2
+    API2 --> B6["Response:\n{ kind:'image', mime:'image/jpeg', data: base64 }"]
+
+    B6 --> B7["Update previewCard state\n+ Save to Cloud Storage"]
+
+    %% Pack Generation Flow (3 more cards)
+    C1["App.tsx: handleGeneratePack()\n(requires preview first)"]
+    C1 --> C2["Loop × 3 (cards 2–4)\nexcludeTitle: prev title"]
+    C2 --> B2
+    C2 --> B5
+    C2 --> C3["Append to pack[]\n+ Save each to Cloud Storage"]
+    C3 --> C4["Display 4-card pack"]
+
+    %% Auth + Rate Limiting
+    subgraph Security ["🔐 Security Layer (every API call)"]
+        S1["JWT Auth\nPlayer Code: TIGER34\n24hr token expiry"]
+        S2["Rate Limit: 100 req/day\nSpeed limit after 50/day"]
+    end
+
+    API1 -.-> Security
+    API2 -.-> Security
+
+    %% Retry Logic
+    subgraph Retry ["♻️ Retry Logic (callApi)"]
+        R1["3 attempts\nBackoff: 1s → 2s → 3s\nTimeout: 30s"]
+    end
+
+    B3 -.-> Retry
+    B5 -.-> Retry
+```
+
+**Call chain summary:**
+- **Theme select** → local stat value generation (no API call)
+- **Generate Preview** → `buildSecureCardPrompt()` → `generateCardIdeas()` (gemini-2.5-flash) → `generateImage()` (imagen-4.0-generate-001)
+- **Generate Pack** → repeats the preview flow 3× more, appending cards sequentially
+- Every backend call passes through JWT auth and global rate limiting
+
+**Key files:**
+- `src/services/geminiService.ts` — all AI call functions & prompt building
+- `server/server.js:163` — backend `/api/generate` endpoint
+- `src/App.tsx` — orchestration: `handleGeneratePreview()`, `handleGeneratePack()`, `handleThemeChange()`
+- `server/middleware/authMiddleware.js` — JWT verification
+- `src/constants.ts` — themes, stats, image styles
+
 ## 📁 Project Structure
 
 ```
