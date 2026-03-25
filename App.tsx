@@ -4,6 +4,7 @@ import ControlPanel from './components/ControlPanel';
 import CardPreview from './components/CardPreview';
 import GeneratedCardsDisplay from './components/GeneratedCardsDisplay';
 import CardLibrary from './components/CardLibrary';
+import AgentChat from './components/AgentChat';
 import Loader from './components/Loader';
 import LoginScreen from './components/auth/LoginScreen';
 import PlayerProfile from './components/auth/PlayerProfile';
@@ -45,6 +46,7 @@ function App() {
   const [shouldSaveCards, setShouldSaveCards] = useState(true);
   const [previewCardPrompt, setPreviewCardPrompt] = useState<string>('');
   const [isCardLibraryOpen, setIsCardLibraryOpen] = useState(false);
+  const [agentMode, setAgentMode] = useState(false);
 
   // Check for existing authentication on app load
   useEffect(() => {
@@ -353,24 +355,94 @@ function App() {
         <PlayerProfile playerData={playerData} onLogout={handleLogout} />
       )}
 
+      {/* Mode Toggle */}
+      <div className="flex justify-center gap-2 max-w-7xl mx-auto mb-6">
+        <button
+          onClick={() => setAgentMode(false)}
+          className={`px-5 py-2 rounded-xl font-bold text-sm transition-colors ${
+            !agentMode
+              ? 'bg-orange-500 text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          🎛️ Design Mode
+        </button>
+        <button
+          onClick={() => setAgentMode(true)}
+          className={`px-5 py-2 rounded-xl font-bold text-sm transition-colors ${
+            agentMode
+              ? 'bg-purple-600 text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          ✨ Agent Mode
+        </button>
+      </div>
+
       <main className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
         <div className="lg:order-1">
-          <ControlPanel
-            cardData={cardData}
-            setCardData={setCardData}
-            selectedTheme={selectedTheme}
-            setSelectedTheme={setSelectedTheme}
-            selectedColorScheme={selectedColorScheme}
-            setSelectedColorScheme={setSelectedColorScheme}
-            selectedImageStyle={selectedImageStyle}
-            setSelectedImageStyle={setSelectedImageStyle}
-            onGeneratePreview={handleGeneratePreview}
-            onGeneratePack={handleGeneratePack}
-            isLoading={isLoading}
-            isPreviewGenerated={!!previewCard}
-            onThemeChange={handleThemeChange}
-            onOpenLibrary={() => setIsCardLibraryOpen(true)}
-          />
+          {agentMode ? (
+            <div className="flex flex-col gap-4">
+              {/* Style pickers remain visible in Agent Mode */}
+              <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+                <p className="text-gray-400 text-sm mb-3 font-medium">Your style choices (agent will respect these):</p>
+                <div className="flex flex-wrap gap-3">
+                  <div>
+                    <label className="text-gray-500 text-xs block mb-1">Color Scheme</label>
+                    <select
+                      value={selectedColorScheme.name}
+                      onChange={e => {
+                        const scheme = COLOR_SCHEMES.find(s => s.name === e.target.value);
+                        if (scheme) setSelectedColorScheme(scheme);
+                      }}
+                      className="bg-gray-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      {COLOR_SCHEMES.map(s => (
+                        <option key={s.name} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-gray-500 text-xs block mb-1">Image Style</label>
+                    <select
+                      value={selectedImageStyle.name}
+                      onChange={e => {
+                        const style = IMAGE_STYLES.find(s => s.name === e.target.value);
+                        if (style) setSelectedImageStyle(style);
+                      }}
+                      className="bg-gray-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      {IMAGE_STYLES.map(s => (
+                        <option key={s.name} value={s.name}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <AgentChat
+                colorScheme={selectedColorScheme}
+                imageStyle={selectedImageStyle}
+                onCardsGenerated={(cards) => setGeneratedCards(prev => [...prev, ...cards])}
+              />
+            </div>
+          ) : (
+            <ControlPanel
+              cardData={cardData}
+              setCardData={setCardData}
+              selectedTheme={selectedTheme}
+              setSelectedTheme={setSelectedTheme}
+              selectedColorScheme={selectedColorScheme}
+              setSelectedColorScheme={setSelectedColorScheme}
+              selectedImageStyle={selectedImageStyle}
+              setSelectedImageStyle={setSelectedImageStyle}
+              onGeneratePreview={handleGeneratePreview}
+              onGeneratePack={handleGeneratePack}
+              isLoading={isLoading}
+              isPreviewGenerated={!!previewCard}
+              onThemeChange={handleThemeChange}
+              onOpenLibrary={() => setIsCardLibraryOpen(true)}
+            />
+          )}
         </div>
         <div className="lg:order-2 flex flex-col items-center justify-start">
             <h3 className="text-2xl font-bold text-gray-300 mb-4">Live Preview</h3>
