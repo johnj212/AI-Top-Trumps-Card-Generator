@@ -49,6 +49,30 @@ const RARITY_COLORS: Record<string, string> = {
   Common: 'text-gray-300',
 };
 
+/**
+ * Infers a style option from free text by matching words in the option name
+ * against the user message. Returns the best match (most word hits), or null.
+ */
+function inferStyleFromText<T extends { name: string }>(
+  text: string,
+  options: T[]
+): T | null {
+  const lower = text.toLowerCase();
+  let bestMatch: T | null = null;
+  let bestCount = 0;
+
+  for (const option of options) {
+    const words = option.name.toLowerCase().split(/\s+/);
+    const count = words.filter(word => lower.includes(word)).length;
+    if (count > bestCount) {
+      bestCount = count;
+      bestMatch = option;
+    }
+  }
+
+  return bestCount > 0 ? bestMatch : null;
+}
+
 function ProgressDisplay({ items }: { items: ProgressItem[] }) {
   if (items.length === 0) return null;
 
