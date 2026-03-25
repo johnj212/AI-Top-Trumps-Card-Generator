@@ -221,11 +221,11 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
       setAwaitingAnswer(true);
       setMessages(prev => [
         ...prev,
-        { role: 'user', text: userMessage },
+        ...(msg ? [] : [{ role: 'user' as const, text: userMessage }]),
         {
-          role: 'question',
+          role: 'question' as const,
           text: 'What colour scheme do you want for your cards?',
-          questionKey: 'colorScheme',
+          questionKey: 'colorScheme' as const,
           options: COLOR_SCHEMES.map(s => s.name),
           answered: false,
         },
