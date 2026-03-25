@@ -138,7 +138,6 @@
 * **Development**: Docker support for local development
 
 ### Production Status
-* **Live URL**: https://ai-top-trumps-card-generator-50477513015.europe-north1.run.app
 * **Deployment Status**: ✅ Fully deployed and operational
 * **Health Status**: ✅ All systems healthy
 * **Storage**: ✅ Google Cloud Storage integrated

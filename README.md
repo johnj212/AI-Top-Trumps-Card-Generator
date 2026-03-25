@@ -4,7 +4,6 @@
 
 A state-of-the-art AI-powered web application that generates professional-quality Top Trumps-style trading cards. Harness the power of Google's Gemini AI to create unique themes, balanced statistics, and stunning artwork for your custom card collections.
 
-🌐 **[Live Demo - Try it now!](https://ai-top-trumps-card-generator-50477513015.europe-north1.run.app)**
 
 > **🔐 Authentication Required**: The application now requires a player code to access all features. This ensures secure usage and prevents unauthorized access to AI services.
 
@@ -116,7 +115,6 @@ flowchart TD
 The application is production-ready and deployed on Google Cloud Run.
 
 ### Current Production Deployment
-- **Live URL**: https://ai-top-trumps-card-generator-50477513015.europe-north1.run.app
 - **Platform**: Google Cloud Run (europe-north1)
 - **Project**: whispers-of-the-wildwood
 - **Auto-scaling**: 0-10 instances based on demand
@@ -301,35 +299,35 @@ Agent Mode lets you generate cards using plain English. Instead of manually sele
 
 ```mermaid
 flowchart TD
-    USER([\"🧒 You: 'Make me dragon cards'\"])
+    USER(["🧒 You: 'Make me dragon cards'"])
 
     USER -->|POST /api/agent/chat| LOOP
 
-    subgraph LOOP [\"🔁 Gemini Orchestration Loop (max 25 iterations)\"]
-        GEM[\"🤖 Gemini 2.5 Flash\\nFunction Calling\"]
-        GEM -->|\"calls tool\"| T1[\"1️⃣ select_theme\\ne.g. Fantasy\"]
-        GEM -->|\"calls tool\"| T2[\"2️⃣ set_series_name\\ne.g. 'Dragon Lords'\"]
-        GEM -->|\"calls tool\"| T3[\"3️⃣ generate_card_ideas\\n(titles, stats, image prompts)\"]
-        GEM -->|\"calls tool × N\"| T4[\"4️⃣ generate_and_save_card\\n(per card, atomic)\"]
-        T1 & T2 & T3 & T4 -->|\"tool results\"| GEM
+    subgraph LOOP ["🔁 Gemini Orchestration Loop (max 25 iterations)"]
+        GEM["🤖 Gemini 2.5 Flash\nFunction Calling"]
+        GEM -->|"calls tool"| T1["1️⃣ select_theme\ne.g. Fantasy"]
+        GEM -->|"calls tool"| T2["2️⃣ set_series_name\ne.g. 'Dragon Lords'"]
+        GEM -->|"calls tool"| T3["3️⃣ generate_card_ideas\n(titles, stats, image prompts)"]
+        GEM -->|"calls tool × N"| T4["4️⃣ generate_and_save_card\n(per card, atomic)"]
+        T1 & T2 & T3 & T4 -->|"tool results"| GEM
     end
 
-    T4 -->|\"Imagen 4 Fast\"| IMG[\"🎨 AI Art\\n(3:4 aspect ratio)\"]
-    IMG -->|\"base64 JPEG\"| GCS[\"☁️ Cloud Storage\"]
-    GCS -->|\"card metadata + image URL\"| SSE
+    T4 -->|"Imagen 4 Fast"| IMG["🎨 AI Art\n(3:4 aspect ratio)"]
+    IMG -->|"base64 JPEG"| GCS["☁️ Cloud Storage"]
+    GCS -->|"card metadata + image URL"| SSE
 
-    subgraph SSE [\"📡 SSE Stream to Browser\"]
-        E1[\"progress: tool_start/done\"]
-        E2[\"card_complete: full card object\"]
-        E3[\"done: summary message\"]
+    subgraph SSE ["📡 SSE Stream to Browser"]
+        E1["progress: tool_start/done"]
+        E2["card_complete: full card object"]
+        E3["done: summary message"]
     end
 
-    SSE -->|\"live updates\"| UI[\"🃏 Cards appear\\nin real time\"]
+    SSE -->|"live updates"| UI["🃏 Cards appear\nin real time"]
 
-    subgraph SEC [\"🔐 Every API Call\"]
-        S1[\"JWT Auth + Rate Limit\"]
-        S2[\"Retry logic (3×, backoff)\"]
-        S3[\"Context trimming\\n(keeps token cost low)\"]
+    subgraph SEC ["🔐 Every API Call"]
+        S1["JWT Auth + Rate Limit"]
+        S2["Retry logic (3×, backoff)"]
+        S3["Context trimming\n(keeps token cost low)"]
     end
 
     LOOP -.-> SEC
