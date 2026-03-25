@@ -206,7 +206,7 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
 
   const sendMessage = async (msg?: string) => {
     const userMessage = (msg ?? input).trim();
-    if (!userMessage || isGenerating || awaitingAnswer) return;
+    if (!userMessage || isGenerating || (!msg && awaitingAnswer)) return;
     if (!msg) setInput('');
     setIsGenerating(true);
 
