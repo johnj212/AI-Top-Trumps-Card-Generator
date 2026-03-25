@@ -1,4 +1,5 @@
 import express from 'express';
+import { randomUUID } from 'crypto';
 import { verifyToken } from '../middleware/authMiddleware.js';
 import { toolDefinitions, executeToolCall } from '../tools/agentTools.js';
 import { saveLog } from '../storage-wrapper.js';
@@ -63,7 +64,15 @@ export function createAgentRouter(genAI) {
     };
 
     const startTime = Date.now();
-    console.log(`[Agent] Starting session for player: ${playerCode}, message: "${message.substring(0, 80)}"`);
+    const sessionId = randomUUID();
+    await saveLog('info', 'agent.session.start', {
+      sessionId,
+      playerCode,
+      'gen_ai.request.model': 'gemini-2.5-flash',
+      messagePreview: message.substring(0, 80),
+      colorScheme,
+      imageStyle,
+    }).catch(() => {});
 
     try {
       const systemPrompt = buildSystemPrompt(colorScheme, imageStyle);
@@ -77,7 +86,6 @@ export function createAgentRouter(genAI) {
 
       while (iteration < MAX_AGENT_ITERATIONS) {
         iteration++;
-        console.log(`[Agent] Iteration ${iteration}: calling Gemini`);
 
         const response = await genAI.models.generateContent({
           model: 'gemini-2.5-flash',
@@ -98,15 +106,25 @@ export function createAgentRouter(genAI) {
         const parts = candidate.content?.parts || [];
         const functionCallParts = parts.filter(p => p.functionCall);
 
+        await saveLog('info', 'agent.llm.response', {
+          sessionId,
+          playerCode,
+          iteration,
+          'gen_ai.request.model': 'gemini-2.5-flash',
+          'gen_ai.response.finish_reason': candidate.finishReason || (functionCallParts.length > 0 ? 'FUNCTION_CALL' : 'STOP'),
+          'gen_ai.usage.input_tokens': response.usageMetadata?.promptTokenCount,
+          'gen_ai.usage.output_tokens': response.usageMetadata?.candidatesTokenCount,
+          functionCallCount: functionCallParts.length,
+        }).catch(() => {});
+
         if (functionCallParts.length === 0) {
           // Agent has finished — send final text response
           const textPart = parts.find(p => p.text);
           const agentMessage = textPart?.text || 'Done! Your cards are ready.';
 
           const durationMs = Date.now() - startTime;
-          console.log(`[Agent] Session complete in ${durationMs}ms, ${agentContext.generatedCards.length} cards generated`);
-
-          await saveLog('info', 'Agent session complete', {
+          await saveLog('info', 'agent.session.complete', {
+            sessionId,
             playerCode,
             cardsGenerated: agentContext.generatedCards.length,
             iterations: iteration,
@@ -128,7 +146,15 @@ export function createAgentRouter(genAI) {
         const functionResponses = [];
         for (const part of functionCallParts) {
           const { name, args } = part.functionCall;
-          console.log(`[Agent] Tool call: ${name}`, JSON.stringify(args).substring(0, 100));
+          const toolStart = Date.now();
+
+          await saveLog('info', 'agent.tool.start', {
+            sessionId,
+            playerCode,
+            iteration,
+            'gen_ai.function.name': name,
+            'gen_ai.function.input': JSON.stringify(args).substring(0, 500),
+          }).catch(() => {});
 
           // Notify frontend that a tool is starting
           sendEvent('progress', { type: 'tool_start', tool: name });
@@ -136,9 +162,26 @@ export function createAgentRouter(genAI) {
           let result;
           try {
             result = await executeToolCall(genAI, name, args, agentContext);
+            const toolDurationMs = Date.now() - toolStart;
+            await saveLog('info', 'agent.tool.done', {
+              sessionId,
+              playerCode,
+              iteration,
+              'gen_ai.function.name': name,
+              'gen_ai.function.output': JSON.stringify(sanitizeResultForStream(name, result)).substring(0, 500),
+              durationMs: toolDurationMs,
+            }).catch(() => {});
             sendEvent('progress', { type: 'tool_done', tool: name, result: sanitizeResultForStream(name, result) });
           } catch (toolError) {
-            console.error(`[Agent] Tool ${name} failed:`, toolError.message);
+            const toolDurationMs = Date.now() - toolStart;
+            await saveLog('error', 'agent.tool.error', {
+              sessionId,
+              playerCode,
+              iteration,
+              'gen_ai.function.name': name,
+              error: toolError.message,
+              durationMs: toolDurationMs,
+            }).catch(() => {});
             sendEvent('progress', { type: 'tool_error', tool: name, error: toolError.message });
             result = { error: toolError.message };
           }
@@ -156,7 +199,13 @@ export function createAgentRouter(genAI) {
       }
 
       // Hit iteration limit
-      console.warn(`[Agent] Hit max iterations (${MAX_AGENT_ITERATIONS})`);
+      await saveLog('warning', 'agent.session.max_iterations', {
+        sessionId,
+        playerCode,
+        iterations: MAX_AGENT_ITERATIONS,
+        cardsGenerated: agentContext.generatedCards.length,
+        durationMs: Date.now() - startTime,
+      }).catch(() => {});
       sendEvent('done', {
         agentMessage: `Done! Generated ${agentContext.generatedCards.length} card${agentContext.generatedCards.length !== 1 ? 's' : ''}.`,
         cards: agentContext.generatedCards,
@@ -164,8 +213,8 @@ export function createAgentRouter(genAI) {
       res.end();
 
     } catch (error) {
-      console.error('[Agent] Fatal error:', error);
-      await saveLog('error', 'Agent session failed', {
+      await saveLog('error', 'agent.session.error', {
+        sessionId,
         playerCode,
         error: error.message,
         durationMs: Date.now() - startTime,
