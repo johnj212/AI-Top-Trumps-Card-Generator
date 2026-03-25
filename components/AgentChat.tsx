@@ -1,16 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { CardData, ColorScheme, ImageStyle } from '../types';
+import { COLOR_SCHEMES, IMAGE_STYLES } from '../constants';
 
 interface AgentChatProps {
-  colorScheme: ColorScheme;
-  imageStyle: ImageStyle;
   onCardsGenerated: (cards: CardData[]) => void;
+  onStyleResolved: (colorScheme: ColorScheme, imageStyle: ImageStyle) => void;
 }
 
 interface ChatMessage {
-  role: 'user' | 'agent';
+  role: 'user' | 'agent' | 'question';
   text: string;
   progressItems?: ProgressItem[];
+  // question-specific fields (role === 'question' only)
+  questionKey?: 'colorScheme' | 'imageStyle';
+  options?: string[];
+  answered?: boolean;
+  selectedOption?: string;
 }
 
 interface ProgressItem {
@@ -43,6 +48,30 @@ const RARITY_COLORS: Record<string, string> = {
   Rare: 'text-blue-400',
   Common: 'text-gray-300',
 };
+
+/**
+ * Infers a style option from free text by matching words in the option name
+ * against the user message. Returns the best match (most word hits), or null.
+ */
+function inferStyleFromText<T extends { name: string }>(
+  text: string,
+  options: T[]
+): T | null {
+  const lower = text.toLowerCase();
+  let bestMatch: T | null = null;
+  let bestCount = 0;
+
+  for (const option of options) {
+    const words = option.name.toLowerCase().split(/\s+/);
+    const count = words.filter(word => lower.includes(word)).length;
+    if (count > bestCount) {
+      bestCount = count;
+      bestMatch = option;
+    }
+  }
+
+  return bestCount > 0 ? bestMatch : null;
+}
 
 function ProgressDisplay({ items }: { items: ProgressItem[] }) {
   if (items.length === 0) return null;
@@ -95,15 +124,66 @@ function ProgressDisplay({ items }: { items: ProgressItem[] }) {
   );
 }
 
+function QuestionBubble({
+  message,
+  onSelect,
+}: {
+  message: ChatMessage;
+  onSelect: (key: 'colorScheme' | 'imageStyle', value: string) => void;
+}) {
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[85%] bg-gray-700 text-gray-100 rounded-2xl rounded-tl-sm px-4 py-3">
+        <div className="mb-2">
+          <span className="text-lg mr-2">🤖</span>
+          <span>{message.text}</span>
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {(message.options ?? []).map((opt) => {
+            const isSelected = message.selectedOption === opt;
+            const isAnswered = message.answered;
+            return (
+              <button
+                key={opt}
+                onClick={() => !isAnswered && onSelect(message.questionKey!, opt)}
+                className={[
+                  'rounded-full px-3 py-1 text-sm font-medium transition-colors',
+                  isSelected
+                    ? 'bg-purple-600 ring-2 ring-purple-400 text-white'
+                    : 'bg-gray-600 text-gray-200 hover:bg-purple-600 hover:text-white',
+                  isAnswered ? 'opacity-50 pointer-events-none' : 'cursor-pointer',
+                ].join(' ')}
+              >
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const EXAMPLE_PROMPTS = [
+  'Make me 3 legendary dragon cards',
+  'Create a pack of space explorer cards',
+  'Build a dinosaur card with max ferocity',
+  'Give me 4 superhero cards with epic powers',
+  'Make a wizard card with crazy magic stats',
+  'Create underwater creature cards',
+  'Make a robot warrior card, rare rarity',
+  'Build me a pack of mythical beast cards',
+];
+
 const AGENT_API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   ? 'http://localhost:3001/api/agent/chat'
   : '/api/agent/chat';
 
-export default function AgentChat({ colorScheme, imageStyle, onCardsGenerated }: AgentChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
+export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentChatProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
       role: 'agent',
-      text: "Hi! Tell me what kind of Top Trumps cards you want and I'll make them for you. Try: \"Make me a dragon card\" or \"Create 3 Pokémon cards\"",
+      text: `Hi! Tell me what kind of Top Trumps cards you want and I'll make them for you. Try: "${EXAMPLE_PROMPTS[Math.floor(Math.random() * EXAMPLE_PROMPTS.length)]}" ✨`,
     },
   ]);
   const [geminiHistory, setGeminiHistory] = useState<GeminiMessage[]>([]);
@@ -112,21 +192,78 @@ export default function AgentChat({ colorScheme, imageStyle, onCardsGenerated }:
   const [liveProgress, setLiveProgress] = useState<ProgressItem[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [selectedColorScheme, setSelectedColorScheme] = useState<ColorScheme | null>(null);
+  const [selectedImageStyle, setSelectedImageStyle] = useState<ImageStyle | null>(null);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const [awaitingAnswer, setAwaitingAnswer] = useState(false);
+  // Ref to safely read resolved color scheme in the imageStyle chip handler
+  // without relying on async React state updates
+  const resolvedColorSchemeRef = useRef<ColorScheme | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, liveProgress]);
 
-  const sendMessage = async () => {
-    const userMessage = input.trim();
-    if (!userMessage || isGenerating) return;
-
-    setInput('');
+  const sendMessage = async (msg?: string, csOverride?: ColorScheme, isOverride?: ImageStyle) => {
+    const userMessage = (msg ?? input).trim();
+    if (!userMessage || isGenerating || (!msg && awaitingAnswer)) return;
+    if (!msg) setInput('');
     setIsGenerating(true);
+
+    // Resolve styles — overrides from handleOptionSelect take priority (avoids stale state),
+    // then fall back to committed state, then infer from message
+    const resolvedCS = csOverride ?? selectedColorScheme ?? inferStyleFromText(userMessage, COLOR_SCHEMES);
+    const resolvedIS = isOverride ?? selectedImageStyle ?? inferStyleFromText(userMessage, IMAGE_STYLES);
+
+    // If color scheme unknown, pause and ask
+    if (!resolvedCS) {
+      setIsGenerating(false);
+      setPendingMessage(userMessage);
+      setAwaitingAnswer(true);
+      setMessages(prev => [
+        ...prev,
+        ...(msg ? [] : [{ role: 'user' as const, text: userMessage }]),
+        {
+          role: 'question' as const,
+          text: 'What colour scheme do you want for your cards?',
+          questionKey: 'colorScheme' as const,
+          options: COLOR_SCHEMES.map(s => s.name),
+          answered: false,
+        },
+      ]);
+      return;
+    }
+
+    // If image style unknown, pause and ask
+    if (!resolvedIS) {
+      setIsGenerating(false);
+      setPendingMessage(userMessage);
+      setAwaitingAnswer(true);
+      setMessages(prev => [
+        ...prev,
+        ...(msg ? [] : [{ role: 'user' as const, text: userMessage }]),
+        {
+          role: 'question' as const,
+          text: 'What image style do you want?',
+          questionKey: 'imageStyle' as const,
+          options: IMAGE_STYLES.map(s => s.name),
+          answered: false,
+        },
+      ]);
+      return;
+    }
+
+    // Both resolved — sync to state and notify parent before the API call
+    setSelectedColorScheme(resolvedCS);
+    setSelectedImageStyle(resolvedIS);
+    onStyleResolved(resolvedCS, resolvedIS);
+
     setLiveProgress([]);
 
-    // Add user message to chat
-    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    // Add user message to chat (skip when replaying a pending message — bubble already shown)
+    if (!msg) {
+      setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    }
 
     // Optimistically add "agent thinking" indicator
     setMessages(prev => [...prev, { role: 'agent', text: '...', progressItems: [] }]);
@@ -142,8 +279,8 @@ export default function AgentChat({ colorScheme, imageStyle, onCardsGenerated }:
         body: JSON.stringify({
           message: userMessage,
           history: geminiHistory,
-          colorScheme: colorScheme.name,
-          imageStyle: imageStyle.name,
+          colorScheme: resolvedCS.name,
+          imageStyle: resolvedIS.name,
         }),
       });
 
@@ -271,6 +408,57 @@ export default function AgentChat({ colorScheme, imageStyle, onCardsGenerated }:
     }
   };
 
+  const handleOptionSelect = (key: 'colorScheme' | 'imageStyle', value: string) => {
+    // Mark the answered question bubble as done
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.role === 'question' && msg.questionKey === key && !msg.answered
+          ? { ...msg, answered: true, selectedOption: value }
+          : msg
+      )
+    );
+
+    setAwaitingAnswer(false);
+
+    if (key === 'colorScheme') {
+      const found = COLOR_SCHEMES.find(s => s.name === value) ?? COLOR_SCHEMES[0];
+      setSelectedColorScheme(found);
+      // Store in ref so imageStyle handler can access it without stale state
+      resolvedColorSchemeRef.current = found;
+
+      if (!selectedImageStyle) {
+        // Need to ask about image style next
+        setAwaitingAnswer(true);
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'question',
+            text: 'What image style do you want?',
+            questionKey: 'imageStyle',
+            options: IMAGE_STYLES.map(s => s.name),
+            answered: false,
+          },
+        ]);
+      } else {
+        // Both resolved — fire callback and replay the pending message
+        onStyleResolved(found, selectedImageStyle);
+        sendMessage(pendingMessage ?? undefined, found, selectedImageStyle);
+        setPendingMessage(null);
+      }
+    } else {
+      // key === 'imageStyle'
+      const found = IMAGE_STYLES.find(s => s.name === value) ?? IMAGE_STYLES[0];
+      setSelectedImageStyle(found);
+
+      // Use ref to get color scheme (avoids stale React state from previous chip click)
+      const cs = resolvedColorSchemeRef.current ?? selectedColorScheme ?? COLOR_SCHEMES[0];
+      onStyleResolved(cs, found);
+      // Pass both resolved values directly — state hasn't committed yet in this event
+      sendMessage(pendingMessage ?? undefined, cs, found);
+      setPendingMessage(null);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -297,23 +485,28 @@ export default function AgentChat({ colorScheme, imageStyle, onCardsGenerated }:
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-              msg.role === 'user'
-                ? 'bg-purple-700 text-white rounded-tr-sm'
-                : 'bg-gray-700 text-gray-100 rounded-tl-sm'
-            }`}>
-              {msg.role === 'agent' && <span className="text-lg mr-2">🤖</span>}
-              <span className={msg.text === '...' ? 'animate-pulse text-gray-400' : ''}>
-                {msg.text}
-              </span>
-              {msg.progressItems && msg.progressItems.length > 0 && (
-                <ProgressDisplay items={msg.progressItems} />
-              )}
+        {messages.map((msg, i) => {
+          if (msg.role === 'question') {
+            return <QuestionBubble key={i} message={msg} onSelect={handleOptionSelect} />;
+          }
+          return (
+            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                msg.role === 'user'
+                  ? 'bg-purple-700 text-white rounded-tr-sm'
+                  : 'bg-gray-700 text-gray-100 rounded-tl-sm'
+              }`}>
+                {msg.role === 'agent' && <span className="text-lg mr-2">🤖</span>}
+                <span className={msg.text === '...' ? 'animate-pulse text-gray-400' : ''}>
+                  {msg.text}
+                </span>
+                {msg.progressItems && msg.progressItems.length > 0 && (
+                  <ProgressDisplay items={msg.progressItems} />
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Live progress for in-flight generation */}
         {isGenerating && liveProgress.length > 0 && (
@@ -338,21 +531,31 @@ export default function AgentChat({ colorScheme, imageStyle, onCardsGenerated }:
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={isGenerating}
-            placeholder={isGenerating ? 'Generating cards...' : 'Describe the cards you want...'}
+            disabled={isGenerating || awaitingAnswer}
+            placeholder={
+              awaitingAnswer
+                ? 'Choose an option above...'
+                : isGenerating
+                ? 'Generating cards...'
+                : 'Describe the cards you want...'
+            }
             className="flex-1 bg-gray-700 text-white placeholder-gray-500 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
           />
           <button
             onClick={sendMessage}
-            disabled={isGenerating || !input.trim()}
+            disabled={isGenerating || awaitingAnswer || !input.trim()}
             className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
           >
             {isGenerating ? '⏳' : '✨'}
           </button>
         </div>
-        <p className="text-gray-600 text-xs mt-1 text-center">
-          Style: {colorScheme.name} · {imageStyle.name}
-        </p>
+        <div className="h-4 mt-1 text-center">
+          {selectedColorScheme && selectedImageStyle && (
+            <p className="text-gray-600 text-xs">
+              Style: {selectedColorScheme.name} · {selectedImageStyle.name}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

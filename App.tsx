@@ -382,49 +382,13 @@ function App() {
       <main className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
         <div className="lg:order-1">
           {agentMode ? (
-            <div className="flex flex-col gap-4">
-              {/* Style pickers remain visible in Agent Mode */}
-              <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                <p className="text-gray-400 text-sm mb-3 font-medium">Your style choices (agent will respect these):</p>
-                <div className="flex flex-wrap gap-3">
-                  <div>
-                    <label className="text-gray-500 text-xs block mb-1">Color Scheme</label>
-                    <select
-                      value={selectedColorScheme.name}
-                      onChange={e => {
-                        const scheme = COLOR_SCHEMES.find(s => s.name === e.target.value);
-                        if (scheme) setSelectedColorScheme(scheme);
-                      }}
-                      className="bg-gray-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    >
-                      {COLOR_SCHEMES.map(s => (
-                        <option key={s.name} value={s.name}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-gray-500 text-xs block mb-1">Image Style</label>
-                    <select
-                      value={selectedImageStyle.name}
-                      onChange={e => {
-                        const style = IMAGE_STYLES.find(s => s.name === e.target.value);
-                        if (style) setSelectedImageStyle(style);
-                      }}
-                      className="bg-gray-700 text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    >
-                      {IMAGE_STYLES.map(s => (
-                        <option key={s.name} value={s.name}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <AgentChat
-                colorScheme={selectedColorScheme}
-                imageStyle={selectedImageStyle}
-                onCardsGenerated={(cards) => setGeneratedCards(prev => [...prev, ...cards])}
-              />
-            </div>
+            <AgentChat
+              onCardsGenerated={(cards) => setGeneratedCards(prev => [...prev, ...cards])}
+              onStyleResolved={(cs, is) => {
+                setSelectedColorScheme(cs);
+                setSelectedImageStyle(is);
+              }}
+            />
           ) : (
             <ControlPanel
               cardData={cardData}
