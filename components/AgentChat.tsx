@@ -1,16 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { CardData, ColorScheme, ImageStyle } from '../types';
+import { COLOR_SCHEMES, IMAGE_STYLES } from '../constants';
 
 interface AgentChatProps {
-  colorScheme: ColorScheme;
-  imageStyle: ImageStyle;
   onCardsGenerated: (cards: CardData[]) => void;
+  onStyleResolved: (colorScheme: ColorScheme, imageStyle: ImageStyle) => void;
 }
 
 interface ChatMessage {
-  role: 'user' | 'agent';
+  role: 'user' | 'agent' | 'question';
   text: string;
   progressItems?: ProgressItem[];
+  // question-specific fields (role === 'question' only)
+  questionKey?: 'colorScheme' | 'imageStyle';
+  options?: string[];
+  answered?: boolean;
+  selectedOption?: string;
 }
 
 interface ProgressItem {
@@ -95,15 +100,30 @@ function ProgressDisplay({ items }: { items: ProgressItem[] }) {
   );
 }
 
+const EXAMPLE_PROMPTS = [
+  'Make me 3 legendary dragon cards',
+  'Create a pack of space explorer cards',
+  'Build a dinosaur card with max ferocity',
+  'Give me 4 superhero cards with epic powers',
+  'Make a wizard card with crazy magic stats',
+  'Create underwater creature cards',
+  'Make a robot warrior card, rare rarity',
+  'Build me a pack of mythical beast cards',
+];
+
 const AGENT_API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   ? 'http://localhost:3001/api/agent/chat'
   : '/api/agent/chat';
 
-export default function AgentChat({ colorScheme, imageStyle, onCardsGenerated }: AgentChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
+export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentChatProps) {
+  // Temporary placeholders — sendMessage and render will use resolvedCS/resolvedIS from Task 4 and Task 6
+  const colorScheme = COLOR_SCHEMES[0];
+  const imageStyle = IMAGE_STYLES[0];
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
       role: 'agent',
-      text: "Hi! Tell me what kind of Top Trumps cards you want and I'll make them for you. Try: \"Make me a dragon card\" or \"Create 3 Pokémon cards\"",
+      text: `Hi! Tell me what kind of Top Trumps cards you want and I'll make them for you. Try: "${EXAMPLE_PROMPTS[Math.floor(Math.random() * EXAMPLE_PROMPTS.length)]}" ✨`,
     },
   ]);
   const [geminiHistory, setGeminiHistory] = useState<GeminiMessage[]>([]);
@@ -112,6 +132,13 @@ export default function AgentChat({ colorScheme, imageStyle, onCardsGenerated }:
   const [liveProgress, setLiveProgress] = useState<ProgressItem[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [selectedColorScheme, setSelectedColorScheme] = useState<ColorScheme | null>(null);
+  const [selectedImageStyle, setSelectedImageStyle] = useState<ImageStyle | null>(null);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const [awaitingAnswer, setAwaitingAnswer] = useState(false);
+  // Ref to safely read resolved color scheme in the imageStyle chip handler
+  // without relying on async React state updates
+  const resolvedColorSchemeRef = useRef<ColorScheme | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
