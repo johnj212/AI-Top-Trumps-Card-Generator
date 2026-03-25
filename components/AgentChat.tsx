@@ -180,10 +180,6 @@ const AGENT_API_URL = typeof window !== 'undefined' && window.location.hostname 
   : '/api/agent/chat';
 
 export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentChatProps) {
-  // Temporary placeholders — sendMessage and render will use resolvedCS/resolvedIS from Task 4 and Task 6
-  const colorScheme = COLOR_SCHEMES[0];
-  const imageStyle = IMAGE_STYLES[0];
-
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
       role: 'agent',
@@ -208,16 +204,65 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, liveProgress]);
 
-  const sendMessage = async () => {
-    const userMessage = input.trim();
-    if (!userMessage || isGenerating) return;
-
-    setInput('');
+  const sendMessage = async (msg?: string) => {
+    const userMessage = (msg ?? input).trim();
+    if (!userMessage || isGenerating || awaitingAnswer) return;
+    if (!msg) setInput('');
     setIsGenerating(true);
+
+    // Resolve styles — use already-selected values, or infer from message
+    const resolvedCS = selectedColorScheme ?? inferStyleFromText(userMessage, COLOR_SCHEMES);
+    const resolvedIS = selectedImageStyle ?? inferStyleFromText(userMessage, IMAGE_STYLES);
+
+    // If color scheme unknown, pause and ask
+    if (!resolvedCS) {
+      setIsGenerating(false);
+      setPendingMessage(userMessage);
+      setAwaitingAnswer(true);
+      setMessages(prev => [
+        ...prev,
+        { role: 'user', text: userMessage },
+        {
+          role: 'question',
+          text: 'What colour scheme do you want for your cards?',
+          questionKey: 'colorScheme',
+          options: COLOR_SCHEMES.map(s => s.name),
+          answered: false,
+        },
+      ]);
+      return;
+    }
+
+    // If image style unknown, pause and ask
+    if (!resolvedIS) {
+      setIsGenerating(false);
+      setPendingMessage(userMessage);
+      setAwaitingAnswer(true);
+      setMessages(prev => [
+        ...prev,
+        ...(msg ? [] : [{ role: 'user' as const, text: userMessage }]),
+        {
+          role: 'question' as const,
+          text: 'What image style do you want?',
+          questionKey: 'imageStyle' as const,
+          options: IMAGE_STYLES.map(s => s.name),
+          answered: false,
+        },
+      ]);
+      return;
+    }
+
+    // Both resolved — sync to state and notify parent before the API call
+    setSelectedColorScheme(resolvedCS);
+    setSelectedImageStyle(resolvedIS);
+    onStyleResolved(resolvedCS, resolvedIS);
+
     setLiveProgress([]);
 
-    // Add user message to chat
-    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    // Add user message to chat (skip when replaying a pending message — bubble already shown)
+    if (!msg) {
+      setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    }
 
     // Optimistically add "agent thinking" indicator
     setMessages(prev => [...prev, { role: 'agent', text: '...', progressItems: [] }]);
@@ -233,8 +278,8 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
         body: JSON.stringify({
           message: userMessage,
           history: geminiHistory,
-          colorScheme: colorScheme.name,
-          imageStyle: imageStyle.name,
+          colorScheme: resolvedCS.name,
+          imageStyle: resolvedIS.name,
         }),
       });
 
@@ -442,7 +487,7 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
           </button>
         </div>
         <p className="text-gray-600 text-xs mt-1 text-center">
-          Style: {colorScheme.name} · {imageStyle.name}
+          {selectedColorScheme && selectedImageStyle ? `Style: ${selectedColorScheme.name} · ${selectedImageStyle.name}` : ''}
         </p>
       </div>
     </div>
