@@ -58,8 +58,8 @@ export const toolDefinitions = [
     },
   },
   {
-    name: 'generate_card_image',
-    description: 'Generate artwork for a single card. Call once per card idea.',
+    name: 'generate_and_save_card',
+    description: 'Generate artwork for a single card and immediately save it to the collection. Call once per card idea.',
     parameters: {
       type: 'object',
       properties: {
@@ -71,6 +71,10 @@ export const toolDefinitions = [
           type: 'string',
           description: 'Detailed image generation prompt from generate_card_ideas',
         },
+        stats: {
+          type: 'object',
+          description: 'Stat name-to-value map from generate_card_ideas (e.g. {"Speed": 85, "Power": 72})',
+        },
         cardId: {
           type: 'string',
           description: 'Unique identifier for this card (e.g. "agent-card-1")',
@@ -80,21 +84,7 @@ export const toolDefinitions = [
           description: 'The series name for this card',
         },
       },
-      required: ['cardTitle', 'imagePrompt', 'cardId', 'seriesName'],
-    },
-  },
-  {
-    name: 'save_card',
-    description: 'Save a generated card to the permanent collection. Call after generate_card_image.',
-    parameters: {
-      type: 'object',
-      properties: {
-        cardId: {
-          type: 'string',
-          description: 'The card ID returned by generate_card_image',
-        },
-      },
-      required: ['cardId'],
+      required: ['cardTitle', 'imagePrompt', 'stats', 'cardId', 'seriesName'],
     },
   },
 ];
@@ -136,7 +126,7 @@ export async function executeToolCall(genAI, name, args, agentContext) {
       };
     }
 
-    case 'generate_card_image': {
+    case 'generate_and_save_card': {
       const { colorScheme, imageStyle } = agentContext;
       const cardId = args.cardId || `agent-card-${Date.now()}`;
       const series = args.seriesName || agentContext.seriesName || 'Agent Collection';
@@ -154,23 +144,30 @@ export async function executeToolCall(genAI, name, args, agentContext) {
         console.warn(`[Agent] Failed to persist image: ${err.message}`);
       }
 
-      // Find matching idea for stats
-      const matchingIdea = (agentContext.cardIdeas || []).find(i => i.title === args.cardTitle);
-      const stats = matchingIdea?.stats || (THEMES[theme] || THEMES['Fantasy']).map(name => ({
+      // Use stats passed directly from generate_card_ideas output
+      const statsObj = args.stats || {};
+      const stats = Object.entries(statsObj).map(([name, value]) => ({
         name,
-        value: Math.floor(Math.random() * 91) + 10,
+        value: Number(value) || 0,
       }));
+
+      // Fall back to random stats only if none were passed
+      const finalStats = stats.length > 0
+        ? stats
+        : (THEMES[theme] || THEMES['Fantasy']).map(name => ({
+            name,
+            value: Math.floor(Math.random() * 91) + 10,
+          }));
 
       const card = {
         id: cardId,
         title: args.cardTitle,
         series,
         image: `data:image/jpeg;base64,${imageBase64}`,
-        stats,
+        stats: finalStats,
         rarity: getRandomRarity(),
         cardNumber: agentContext.generatedCards.length + 1,
         totalCards: agentContext.totalCards || 1,
-        // Storage metadata (for card library compatibility)
         theme,
         colorScheme,
         imageStyle,
@@ -181,6 +178,14 @@ export async function executeToolCall(genAI, name, args, agentContext) {
       };
 
       agentContext.generatedCards.push(card);
+
+      // Persist card metadata
+      try {
+        await saveCard(cardId, card);
+        console.log(`[Agent] Card saved: ${card.title}`);
+      } catch (err) {
+        console.warn(`[Agent] Failed to save card metadata: ${err.message}`);
+      }
 
       // Stream card to frontend immediately
       if (agentContext.streamEvent) {
@@ -195,22 +200,10 @@ export async function executeToolCall(genAI, name, args, agentContext) {
       return { cardId, title: args.cardTitle, rarity: card.rarity, success: true };
     }
 
+    // Backward-compat stub — Gemini may call this from old conversation history
     case 'save_card': {
-      const cardId = args.cardId;
-      const card = agentContext.generatedCards.find(c => c.id === cardId);
-
-      if (!card) {
-        return { success: false, error: `Card ${cardId} not found in generated cards` };
-      }
-
-      try {
-        await saveCard(cardId, card);
-        console.log(`[Agent] Card saved: ${card.title}`);
-        return { success: true, cardId };
-      } catch (err) {
-        console.warn(`[Agent] Failed to save card: ${err.message}`);
-        return { success: false, error: err.message };
-      }
+      console.log(`[Agent] save_card called (now handled by generate_and_save_card), ignoring`);
+      return { success: true, note: 'Card was already saved by generate_and_save_card' };
     }
 
     default:

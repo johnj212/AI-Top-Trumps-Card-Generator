@@ -13,10 +13,9 @@ When a user describes what cards they want, use your tools in this order:
 1. select_theme — choose the closest matching theme from the available options
 2. set_series_name — create an exciting, creative series name based on the user's intent
 3. generate_card_ideas — get card concepts (default: 1 card unless user asks for more, max 4)
-4. generate_card_image — generate artwork for each card concept (call ONCE per card, not once total)
-5. save_card — persist each card to the collection (call once per card after generate_card_image)
+4. generate_and_save_card — generate artwork AND save each card in one step (call ONCE per card idea, passing the stats from generate_card_ideas directly)
 
-IMPORTANT: If generate_card_ideas returns 3 ideas, you must call generate_card_image 3 times (once for each idea) and save_card 3 times.
+IMPORTANT: If generate_card_ideas returns 3 ideas, you must call generate_and_save_card 3 times (once for each idea), passing the stats object from each idea into the stats parameter.
 
 Rules:
 - Default to 1 card unless the user asks for more (max 4)
@@ -65,6 +64,8 @@ export function createAgentRouter(genAI) {
 
     const startTime = Date.now();
     const sessionId = randomUUID();
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
     await saveLog('info', 'agent.session.start', {
       sessionId,
       playerCode,
@@ -106,14 +107,19 @@ export function createAgentRouter(genAI) {
         const parts = candidate.content?.parts || [];
         const functionCallParts = parts.filter(p => p.functionCall);
 
+        const inputTokens = response.usageMetadata?.promptTokenCount || 0;
+        const outputTokens = response.usageMetadata?.candidatesTokenCount || 0;
+        totalInputTokens += inputTokens;
+        totalOutputTokens += outputTokens;
+
         await saveLog('info', 'agent.llm.response', {
           sessionId,
           playerCode,
           iteration,
           'gen_ai.request.model': 'gemini-2.5-flash',
           'gen_ai.response.finish_reason': candidate.finishReason || (functionCallParts.length > 0 ? 'FUNCTION_CALL' : 'STOP'),
-          'gen_ai.usage.input_tokens': response.usageMetadata?.promptTokenCount,
-          'gen_ai.usage.output_tokens': response.usageMetadata?.candidatesTokenCount,
+          'gen_ai.usage.input_tokens': inputTokens,
+          'gen_ai.usage.output_tokens': outputTokens,
           functionCallCount: functionCallParts.length,
         }).catch(() => {});
 
@@ -123,12 +129,18 @@ export function createAgentRouter(genAI) {
           const agentMessage = textPart?.text || 'Done! Your cards are ready.';
 
           const durationMs = Date.now() - startTime;
+          // Gemini 2.5 Flash pricing: $0.075/1M input tokens, $0.30/1M output tokens
+          const estimatedCostUSD = (totalInputTokens / 1_000_000) * 0.075
+            + (totalOutputTokens / 1_000_000) * 0.30;
           await saveLog('info', 'agent.session.complete', {
             sessionId,
             playerCode,
             cardsGenerated: agentContext.generatedCards.length,
             iterations: iteration,
             durationMs,
+            'gen_ai.usage.total_input_tokens': totalInputTokens,
+            'gen_ai.usage.total_output_tokens': totalOutputTokens,
+            estimatedCostUSD: +estimatedCostUSD.toFixed(6),
           }).catch(() => {});
 
           sendEvent('done', {
@@ -196,15 +208,25 @@ export function createAgentRouter(genAI) {
 
         // Feed results back to Gemini
         messages.push({ role: 'user', parts: functionResponses });
+
+        // Trim large payloads from earlier history to keep context lean.
+        // generate_card_ideas returns full imagePrompt strings per card — once
+        // consumed by generate_and_save_card they don't need to stay in context.
+        messages = trimConsumedPayloads(messages);
       }
 
       // Hit iteration limit
+      const estimatedCostUSD = (totalInputTokens / 1_000_000) * 0.075
+        + (totalOutputTokens / 1_000_000) * 0.30;
       await saveLog('warning', 'agent.session.max_iterations', {
         sessionId,
         playerCode,
         iterations: MAX_AGENT_ITERATIONS,
         cardsGenerated: agentContext.generatedCards.length,
         durationMs: Date.now() - startTime,
+        'gen_ai.usage.total_input_tokens': totalInputTokens,
+        'gen_ai.usage.total_output_tokens': totalOutputTokens,
+        estimatedCostUSD: +estimatedCostUSD.toFixed(6),
       }).catch(() => {});
       sendEvent('done', {
         agentMessage: `Done! Generated ${agentContext.generatedCards.length} card${agentContext.generatedCards.length !== 1 ? 's' : ''}.`,
@@ -236,4 +258,44 @@ function sanitizeResultForStream(toolName, result) {
   }
   // For other tools, result is already small
   return result;
+}
+
+// Once generate_card_ideas results have been consumed (i.e. generate_and_save_card
+// has been called at least once), replace the ideas payload in prior function
+// responses with a lightweight summary to keep the context window lean.
+function trimConsumedPayloads(messages) {
+  // Only trim once a generate_and_save_card call has been fed back
+  const hasConsumed = messages.some(m =>
+    m.role === 'user' &&
+    m.parts?.some(p =>
+      p.functionResponse?.name === 'generate_and_save_card'
+    )
+  );
+  if (!hasConsumed) return messages;
+
+  return messages.map(m => {
+    if (m.role !== 'user') return m;
+    const trimmedParts = m.parts.map(p => {
+      if (
+        p.functionResponse?.name === 'generate_card_ideas' &&
+        p.functionResponse.response?.result?.ideas
+      ) {
+        const { count, ideas } = p.functionResponse.response.result;
+        return {
+          functionResponse: {
+            name: 'generate_card_ideas',
+            response: {
+              result: {
+                count,
+                titles: ideas.map(i => i.title),
+                note: '[image prompts and stats trimmed from context]',
+              },
+            },
+          },
+        };
+      }
+      return p;
+    });
+    return { ...m, parts: trimmedParts };
+  });
 }

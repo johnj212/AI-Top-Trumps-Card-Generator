@@ -31,6 +31,17 @@ const IMAGE_STYLE_PROMPTS = {
   'Neonpunk Transformer': 'neonpunk transformer robot, glowing neon circuitry, mechanical cyberpunk aesthetic, electric glow effects',
 };
 
+async function withRetry(fn, maxAttempts = 3) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt === maxAttempts) throw err;
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+    }
+  }
+}
+
 export function getRandomRarity() {
   const rand = Math.random() * 100;
   if (rand < 3) return 'Legendary';
@@ -42,40 +53,47 @@ export function getRandomRarity() {
 function buildCardPrompt(theme, imageStyleName, statNames, count, themeContext) {
   const themeDesc = THEME_PROMPTS[theme] || 'fantasy entity';
   const stylePrompt = IMAGE_STYLE_PROMPTS[imageStyleName] || IMAGE_STYLE_PROMPTS['Highly Realistic'];
-  const contextClause = themeContext ? ` focused on ${themeContext}` : '';
-  const pluralClause = count > 1 ? 's' : '';
+  const contextClause = themeContext ? ` specifically about: ${themeContext}` : '';
 
-  return `You are a creative assistant for a Top Trumps card game. Generate ${count} unique ${themeDesc} concept${pluralClause}${contextClause}. For each card, provide a compelling title and assign balanced, thematic values between 1 and 100 for these statistics: ${statNames}. Also, create a detailed, visually rich prompt for an AI image generator using this style: ${stylePrompt}. The image must feature ONLY the single subject from the card's title, isolated or in a simple environment, without other creatures or characters.
+  return `You are a Top Trumps card designer creating cards for children aged 8-12.
 
-Return ONLY valid JSON with no additional text. Use this exact format:
-${count === 1 ? `{
-  "title": "Card Title",
-  "stats": {
-    "stat1": 85,
-    "stat2": 72
-  },
-  "imagePrompt": "Detailed image description..."
-}` : `[
+## Task
+Generate ${count} unique ${themeDesc} card concept${count > 1 ? 's' : ''}${contextClause}.
+
+## Stats Rules
+Assign values (1-100) for: ${statNames}
+
+Give each card a clear gameplay identity — 1-2 signature HIGH stats (85-100) that define its character, and genuine WEAK stats (10-40) that create trade-offs. A fast creature has high Speed but low Defense. A powerful brute has high Strength but low Agility. Avoid giving all stats similar values.
+
+## Image Prompt Rules
+Write a vivid image generation prompt that:
+- Features ONLY the single named subject, isolated or in a minimal environment
+- Describes pose, key visual features, and atmosphere
+- Ends with the style descriptor: ${stylePrompt}
+- Is 3-5 sentences long
+
+## Example Output
+[
   {
-    "title": "Card Title 1",
-    "stats": {
-      "stat1": 85,
-      "stat2": 72
-    },
-    "imagePrompt": "Detailed image description..."
+    "title": "Velociraptor Alpha",
+    "stats": { "Speed": 97, "Ferocity": 89, "Agility": 92, "Weight": 18, "Deadliness": 85, "Height": 22 },
+    "imagePrompt": "A single velociraptor mid-leap against a stormy jungle backdrop, scales glistening with rain, claws extended. Its eyes are alert and predatory, body low and aerodynamic. Simple dark foliage in the background keeps focus on the creature. ${stylePrompt}"
   }
-]`}`;
+]
+
+## Your Output
+Return ONLY a valid JSON array with ${count} card${count > 1 ? 's' : ''}. No markdown, no explanation.`;
 }
 
 export async function generateCardIdeasInternal(genAI, theme, imageStyleName, count, themeContext) {
   const statNames = (THEMES[theme] || THEMES['Fantasy']).join(', ');
   const prompt = buildCardPrompt(theme, imageStyleName, statNames, count, themeContext);
 
-  const result = await genAI.models.generateContent({
+  const result = await withRetry(() => genAI.models.generateContent({
     model: 'gemini-2.5-flash',
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: { responseMimeType: 'application/json' },
-  });
+  }));
 
   let rawText = result.candidates[0].content.parts[0].text;
   rawText = rawText.replace(/^(```)?json\n/, '').replace(/```$/, '').trim();
@@ -87,7 +105,7 @@ export async function generateCardIdeasInternal(genAI, theme, imageStyleName, co
     throw new Error(`Failed to parse card ideas from AI: ${e.message}`);
   }
 
-  // Normalize to array
+  // Always an array — prompt explicitly requests array format
   let concepts = Array.isArray(parsed) ? parsed : [parsed];
 
   return concepts.map(c => {
@@ -105,7 +123,7 @@ export async function generateCardIdeasInternal(genAI, theme, imageStyleName, co
 }
 
 export async function generateImageInternal(genAI, imagePrompt) {
-  const imageResult = await genAI.models.generateImages({
+  const imageResult = await withRetry(() => genAI.models.generateImages({
     model: 'imagen-4.0-generate-001',
     prompt: imagePrompt,
     config: {
@@ -113,7 +131,7 @@ export async function generateImageInternal(genAI, imagePrompt) {
       outputMimeType: 'image/jpeg',
       aspectRatio: '3:4',
     },
-  });
+  }));
 
   if (!imageResult.generatedImages || imageResult.generatedImages.length === 0) {
     throw new Error('No image was generated');
