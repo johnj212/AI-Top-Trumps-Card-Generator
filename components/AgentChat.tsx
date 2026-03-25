@@ -204,15 +204,16 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, liveProgress]);
 
-  const sendMessage = async (msg?: string) => {
+  const sendMessage = async (msg?: string, csOverride?: ColorScheme, isOverride?: ImageStyle) => {
     const userMessage = (msg ?? input).trim();
     if (!userMessage || isGenerating || (!msg && awaitingAnswer)) return;
     if (!msg) setInput('');
     setIsGenerating(true);
 
-    // Resolve styles — use already-selected values, or infer from message
-    const resolvedCS = selectedColorScheme ?? inferStyleFromText(userMessage, COLOR_SCHEMES);
-    const resolvedIS = selectedImageStyle ?? inferStyleFromText(userMessage, IMAGE_STYLES);
+    // Resolve styles — overrides from handleOptionSelect take priority (avoids stale state),
+    // then fall back to committed state, then infer from message
+    const resolvedCS = csOverride ?? selectedColorScheme ?? inferStyleFromText(userMessage, COLOR_SCHEMES);
+    const resolvedIS = isOverride ?? selectedImageStyle ?? inferStyleFromText(userMessage, IMAGE_STYLES);
 
     // If color scheme unknown, pause and ask
     if (!resolvedCS) {
@@ -441,7 +442,7 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
       } else {
         // Both resolved — fire callback and replay the pending message
         onStyleResolved(found, selectedImageStyle);
-        sendMessage(pendingMessage ?? undefined);
+        sendMessage(pendingMessage ?? undefined, found, selectedImageStyle);
         setPendingMessage(null);
       }
     } else {
@@ -452,7 +453,8 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
       // Use ref to get color scheme (avoids stale React state from previous chip click)
       const cs = resolvedColorSchemeRef.current ?? selectedColorScheme ?? COLOR_SCHEMES[0];
       onStyleResolved(cs, found);
-      sendMessage(pendingMessage ?? undefined);
+      // Pass both resolved values directly — state hasn't committed yet in this event
+      sendMessage(pendingMessage ?? undefined, cs, found);
       setPendingMessage(null);
     }
   };
