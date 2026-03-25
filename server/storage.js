@@ -87,40 +87,22 @@ export async function saveLog(logLevel, message, metadata = {}) {
   try {
     const date = new Date().toISOString().split('T')[0];
     const timestamp = new Date().toISOString();
-    const fileName = `logs/${date}/${logLevel}.jsonl`;
-    
+    const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const fileName = `logs/${date}/${logLevel}/${unique}.json`;
+
     const logEntry = {
       timestamp,
       level: logLevel,
       message,
       ...metadata
     };
-    
+
     const file = bucket.file(fileName);
-    
-    // Check if file exists and read existing content for true append behavior
-    let existingContent = '';
-    try {
-      const [exists] = await file.exists();
-      if (exists) {
-        const [content] = await file.download();
-        existingContent = content.toString();
-      }
-    } catch (downloadError) {
-      // If we can't read the existing file, start fresh
-      console.warn(`⚠️ Could not read existing log file ${fileName}, starting fresh:`, downloadError.message);
-      existingContent = '';
-    }
-    
-    // Append new log entry to existing content
-    const newContent = existingContent + JSON.stringify(logEntry) + '\n';
-    
-    // Save the combined content back to the file
-    await file.save(newContent, {
-      metadata: { contentType: 'application/x-ndjson' },
+    await file.save(JSON.stringify(logEntry), {
+      metadata: { contentType: 'application/json' },
       resumable: false
     });
-    
+
   } catch (error) {
     console.error('❌ Error saving log:', error);
     // Don't throw here - logging failures shouldn't break the app
