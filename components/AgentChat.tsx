@@ -407,6 +407,56 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
     }
   };
 
+  const handleOptionSelect = (key: 'colorScheme' | 'imageStyle', value: string) => {
+    // Mark the answered question bubble as done
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.role === 'question' && msg.questionKey === key && !msg.answered
+          ? { ...msg, answered: true, selectedOption: value }
+          : msg
+      )
+    );
+
+    setAwaitingAnswer(false);
+
+    if (key === 'colorScheme') {
+      const found = COLOR_SCHEMES.find(s => s.name === value) ?? COLOR_SCHEMES[0];
+      setSelectedColorScheme(found);
+      // Store in ref so imageStyle handler can access it without stale state
+      resolvedColorSchemeRef.current = found;
+
+      if (!selectedImageStyle) {
+        // Need to ask about image style next
+        setAwaitingAnswer(true);
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'question',
+            text: 'What image style do you want?',
+            questionKey: 'imageStyle',
+            options: IMAGE_STYLES.map(s => s.name),
+            answered: false,
+          },
+        ]);
+      } else {
+        // Both resolved — fire callback and replay the pending message
+        onStyleResolved(found, selectedImageStyle);
+        sendMessage(pendingMessage ?? undefined);
+        setPendingMessage(null);
+      }
+    } else {
+      // key === 'imageStyle'
+      const found = IMAGE_STYLES.find(s => s.name === value) ?? IMAGE_STYLES[0];
+      setSelectedImageStyle(found);
+
+      // Use ref to get color scheme (avoids stale React state from previous chip click)
+      const cs = resolvedColorSchemeRef.current ?? selectedColorScheme ?? COLOR_SCHEMES[0];
+      onStyleResolved(cs, found);
+      sendMessage(pendingMessage ?? undefined);
+      setPendingMessage(null);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -433,23 +483,28 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-              msg.role === 'user'
-                ? 'bg-purple-700 text-white rounded-tr-sm'
-                : 'bg-gray-700 text-gray-100 rounded-tl-sm'
-            }`}>
-              {msg.role === 'agent' && <span className="text-lg mr-2">🤖</span>}
-              <span className={msg.text === '...' ? 'animate-pulse text-gray-400' : ''}>
-                {msg.text}
-              </span>
-              {msg.progressItems && msg.progressItems.length > 0 && (
-                <ProgressDisplay items={msg.progressItems} />
-              )}
+        {messages.map((msg, i) => {
+          if (msg.role === 'question') {
+            return <QuestionBubble key={i} message={msg} onSelect={handleOptionSelect} />;
+          }
+          return (
+            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                msg.role === 'user'
+                  ? 'bg-purple-700 text-white rounded-tr-sm'
+                  : 'bg-gray-700 text-gray-100 rounded-tl-sm'
+              }`}>
+                {msg.role === 'agent' && <span className="text-lg mr-2">🤖</span>}
+                <span className={msg.text === '...' ? 'animate-pulse text-gray-400' : ''}>
+                  {msg.text}
+                </span>
+                {msg.progressItems && msg.progressItems.length > 0 && (
+                  <ProgressDisplay items={msg.progressItems} />
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Live progress for in-flight generation */}
         {isGenerating && liveProgress.length > 0 && (
