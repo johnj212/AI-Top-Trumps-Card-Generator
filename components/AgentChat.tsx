@@ -59,8 +59,14 @@ function ProgressDisplay({ items }: { items: ProgressItem[] }) {
             </div>
           );
         }
-        if (item.type === 'tool_done' && item.tool === 'select_theme') {
-          return null; // Don't show tool_done for most tools — card_complete handles the visible result
+        if (item.type === 'tool_done') {
+          const label = TOOL_LABELS[item.tool || ''] || item.tool;
+          return (
+            <div key={i} className="flex items-center gap-2 text-sm text-gray-500">
+              <span>✓</span>
+              <span>{label}</span>
+            </div>
+          );
         }
         if (item.type === 'card_complete') {
           const rarityClass = RARITY_COLORS[item.rarity || ''] || 'text-gray-300';
@@ -191,20 +197,26 @@ export default function AgentChat({ colorScheme, imageStyle, onCardsGenerated }:
             continue;
           }
 
-          if (currentEvent === 'progress') {
-            if (data.type === 'card_complete') {
-              newCards.push(data.card as CardData);
-              // Notify parent immediately as each card arrives
-              onCardsGenerated([data.card as CardData]);
-              progressSnapshot.push({
-                type: 'card_complete',
-                cardTitle: data.card.title,
-                rarity: data.card.rarity,
-                index: data.index,
-                total: data.total,
-              });
-            } else if (data.type === 'tool_start') {
+          if (currentEvent === 'card_complete') {
+            newCards.push(data.card as CardData);
+            onCardsGenerated([data.card as CardData]);
+            progressSnapshot.push({
+              type: 'card_complete',
+              cardTitle: data.card.title,
+              rarity: data.card.rarity,
+              index: data.index,
+              total: data.total,
+            });
+            setLiveProgress([...progressSnapshot]);
+
+          } else if (currentEvent === 'progress') {
+            if (data.type === 'tool_start') {
               progressSnapshot.push({ type: 'tool_start', tool: data.tool });
+            } else if (data.type === 'tool_done') {
+              // Replace matching tool_start bolt with a done checkmark
+              const idx = [...progressSnapshot].reverse().findIndex(p => p.type === 'tool_start' && p.tool === data.tool);
+              const realIdx = idx !== -1 ? progressSnapshot.length - 1 - idx : -1;
+              if (realIdx !== -1) progressSnapshot[realIdx] = { type: 'tool_done', tool: data.tool };
             } else if (data.type === 'tool_error') {
               progressSnapshot.push({ type: 'tool_error', tool: data.tool, error: data.error });
             }

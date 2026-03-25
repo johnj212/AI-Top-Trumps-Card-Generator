@@ -444,13 +444,34 @@ function App() {
             />
           )}
         </div>
-        <div className="lg:order-2 flex flex-col items-center justify-start">
-            <h3 className="text-2xl font-bold text-gray-300 mb-4">Live Preview</h3>
-            <CardPreview cardData={cardData} colorScheme={selectedColorScheme} />
+        <div className="lg:order-2 flex flex-col items-center justify-start w-full">
+          {agentMode ? (
+            generatedCards.length > 0 ? (
+              <div className="w-full">
+                <h2 className="text-2xl font-bold text-orange-400 mb-4 text-center">Your Generated Cards</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 justify-items-center">
+                  {generatedCards.map((card) => (
+                    <CardPreview key={card.id} cardData={card} colorScheme={selectedColorScheme} />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center mt-16 text-gray-500">
+                <p className="text-5xl mb-4">🎴</p>
+                <p className="font-medium">Your cards will appear here</p>
+                <p className="text-sm mt-1">Chat with the agent to get started</p>
+              </div>
+            )
+          ) : (
+            <>
+              <h3 className="text-2xl font-bold text-gray-300 mb-4">Live Preview</h3>
+              <CardPreview cardData={cardData} colorScheme={selectedColorScheme} />
+            </>
+          )}
         </div>
       </main>
 
-      {generatedCards.length > 0 && (
+      {!agentMode && generatedCards.length > 0 && (
          <section className="max-w-7xl mx-auto">
             <GeneratedCardsDisplay cards={generatedCards} colorScheme={selectedColorScheme} />
          </section>
