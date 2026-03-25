@@ -78,6 +78,10 @@
 - Always test both stats and image generation after any change.
 
 ## Recent Development History
+* ✅ **Agent Mode Reliability & Cost Tracking (v1.9.0)** - Merged tools into atomic `generate_and_save_card`, direct stats passing, retry logic, structured telemetry with USD cost estimation (Mar 2026)
+* ✅ **Agent Mode Structured Telemetry** - OpenTelemetry-aligned event logging: session start/complete, tool start/done/error, per-iteration LLM response with token counts (Mar 2026)
+* ✅ **Agent Mode SSE Streaming** - Real-time Server-Sent Events for tool progress, `card_complete`, `done`, and `error` events (Mar 2026)
+* ✅ **Agent Mode with Gemini Function Calling** - Natural language card generation using Gemini 2.5 Flash with 4 callable tools: `select_theme`, `set_series_name`, `generate_card_ideas`, `generate_and_save_card` (Mar 2026)
 * ✅ **Mobile Download Improvements (v1.2.0)** - Enhanced iPhone integration with Web Share API and popup-free downloads (Sep 4, 2025)
 * ✅ **iPhone "Save to Photos" Integration** - Direct Photos app saving via Web Share API with graceful cancellation handling (Sep 4, 2025)  
 * ✅ **Web Share API Implementation** - Native mobile sharing experience with file sharing capabilities (Sep 4, 2025)
@@ -104,6 +108,7 @@
 ## Current Project Status
 
 ### Completed Features
+* ✅ **Agent Mode** - Natural language card generation via Gemini function calling with SSE streaming, autonomous tool orchestration, and structured telemetry
 * ✅ **Global Rate Limiting** - 100 requests per day limit with speed throttling and comprehensive logging
 * ✅ **Enhanced Cloud Logging** - User details, rate limits, and comprehensive request tracking
 * ✅ **Player Code Authentication System** - Secure JWT-based login with player code authentication
@@ -161,8 +166,9 @@
 ### Frontend (React + TypeScript)
 * **Port**: 8088 (Vite dev server)
 * **Main Components**:
-  - `App.tsx`: Main application logic and state management
-  - `ControlPanel.tsx`: User interface for card customization
+  - `App.tsx`: Main application logic, mode toggle (Design/Agent), state management
+  - `ControlPanel.tsx`: User interface for card customization (Design Mode)
+  - `AgentChat.tsx`: Chat UI with SSE streaming and live progress display (Agent Mode)
   - `CardPreview.tsx`: Real-time card preview
   - `GeneratedCardsDisplay.tsx`: Display generated card packs
   - `Loader.tsx`: Loading states and progress indicators
@@ -172,7 +178,13 @@
 ### Backend (Express.js)
 * **Port**: 3001
 * **Main File**: `server/server.js`
-* **API Endpoints**: Single `/api/generate` endpoint handling both text and image generation
+* **API Endpoints**:
+  - `/api/generate` - Design Mode: text and image generation (PROTECTED)
+  - `/api/agent/chat` - Agent Mode: Gemini function calling loop with SSE streaming (PROTECTED)
+* **Agent Files**:
+  - `server/routes/agentRoutes.js`: Gemini orchestration loop, SSE emission, telemetry
+  - `server/tools/agentTools.js`: 4 tool definitions and execution handlers
+  - `server/services/generationService.js`: Gemini/Imagen API calls with retry logic
 * **AI Integration**: Google Gemini API with proper error handling
 * **Features**: CORS enabled, static file serving, environment variable validation
 
