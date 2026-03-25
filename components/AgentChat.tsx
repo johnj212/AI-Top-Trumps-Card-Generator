@@ -124,6 +124,46 @@ function ProgressDisplay({ items }: { items: ProgressItem[] }) {
   );
 }
 
+function QuestionBubble({
+  message,
+  onSelect,
+}: {
+  message: ChatMessage;
+  onSelect: (key: 'colorScheme' | 'imageStyle', value: string) => void;
+}) {
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[85%] bg-gray-700 text-gray-100 rounded-2xl rounded-tl-sm px-4 py-3">
+        <div className="mb-2">
+          <span className="text-lg mr-2">🤖</span>
+          <span>{message.text}</span>
+        </div>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {(message.options ?? []).map((opt) => {
+            const isSelected = message.selectedOption === opt;
+            const isAnswered = message.answered;
+            return (
+              <button
+                key={opt}
+                onClick={() => !isAnswered && onSelect(message.questionKey!, opt)}
+                className={[
+                  'rounded-full px-3 py-1 text-sm font-medium transition-colors',
+                  isSelected
+                    ? 'bg-purple-600 ring-2 ring-purple-400 text-white'
+                    : 'bg-gray-600 text-gray-200 hover:bg-purple-600 hover:text-white',
+                  isAnswered ? 'opacity-50 pointer-events-none' : 'cursor-pointer',
+                ].join(' ')}
+              >
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const EXAMPLE_PROMPTS = [
   'Make me 3 legendary dragon cards',
   'Create a pack of space explorer cards',
