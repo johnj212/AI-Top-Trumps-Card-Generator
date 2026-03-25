@@ -4,7 +4,6 @@
 
 A state-of-the-art AI-powered web application that generates professional-quality Top Trumps-style trading cards. Harness the power of Google's Gemini AI to create unique themes, balanced statistics, and stunning artwork for your custom card collections.
 
-🌐 **[Live Demo - Try it now!](https://ai-top-trumps-card-generator-50477513015.europe-north1.run.app)**
 
 > **🔐 Authentication Required**: The application now requires a player code to access all features. This ensures secure usage and prevents unauthorized access to AI services.
 
@@ -37,7 +36,8 @@ flowchart TD
 -   **🛡️ Protected API Access**: All AI endpoints require authentication to prevent unauthorized usage
 -   **💾 Session Management**: Persistent login state with automatic token validation
 -   **⚡ Rate Limiting**: Global rate limit of 100 requests per day to prevent abuse and control costs
--   **🤖 AI-Powered Content Generation**: Utilizes `gemini-2.5-flash` to dynamically generate thematic statistics and full card packs with unique titles and values.
+-   **🧠 Agent Mode**: Natural language card generation — just describe what you want ("Make me 3 dragon cards") and the AI autonomously orchestrates the entire pipeline via Gemini function calling with real-time streaming progress.
+-   **🤖 AI-Powered Content Generation**: Utilises `gemini-2.5-flash` to dynamically generate thematic statistics and full card packs with unique titles and values.
 -   **🎨 Stunning AI Image Generation**: Leverages `imagen-4.0-generate-001` (Imagen 4 Fast) to create high-quality, custom artwork for each card based on dynamic prompts.
 -   **👀 Live Interactive Preview**: Instantly see how your card looks with a beautiful initial preview that loads immediately.
 -   **🎛️ Deep Customization**:
@@ -115,7 +115,6 @@ flowchart TD
 The application is production-ready and deployed on Google Cloud Run.
 
 ### Current Production Deployment
-- **Live URL**: https://ai-top-trumps-card-generator-50477513015.europe-north1.run.app
 - **Platform**: Google Cloud Run (europe-north1)
 - **Project**: whispers-of-the-wildwood
 - **Auto-scaling**: 0-10 instances based on demand
@@ -289,6 +288,66 @@ flowchart TD
 - `src/App.tsx` — orchestration: `handleGeneratePreview()`, `handleGeneratePack()`, `handleThemeChange()`
 - `server/middleware/authMiddleware.js` — JWT verification
 - `src/constants.ts` — themes, stats, image styles
+
+## 🧠 Agent Mode
+
+Agent Mode lets you generate cards using plain English. Instead of manually selecting themes and clicking through steps, you describe what you want and the AI handles everything.
+
+> **Try it:** Switch to Agent Mode in the app and type *"Make me 3 mythical dragon cards"*
+
+### How Agent Mode Works
+
+```mermaid
+flowchart TD
+    USER(["🧒 You: 'Make me dragon cards'"])
+
+    USER -->|POST /api/agent/chat| LOOP
+
+    subgraph LOOP ["🔁 Gemini Orchestration Loop (max 25 iterations)"]
+        GEM["🤖 Gemini 2.5 Flash\nFunction Calling"]
+        GEM -->|"calls tool"| T1["1️⃣ select_theme\ne.g. Fantasy"]
+        GEM -->|"calls tool"| T2["2️⃣ set_series_name\ne.g. 'Dragon Lords'"]
+        GEM -->|"calls tool"| T3["3️⃣ generate_card_ideas\n(titles, stats, image prompts)"]
+        GEM -->|"calls tool × N"| T4["4️⃣ generate_and_save_card\n(per card, atomic)"]
+        T1 & T2 & T3 & T4 -->|"tool results"| GEM
+    end
+
+    T4 -->|"Imagen 4 Fast"| IMG["🎨 AI Art\n(3:4 aspect ratio)"]
+    IMG -->|"base64 JPEG"| GCS["☁️ Cloud Storage"]
+    GCS -->|"card metadata + image URL"| SSE
+
+    subgraph SSE ["📡 SSE Stream to Browser"]
+        E1["progress: tool_start/done"]
+        E2["card_complete: full card object"]
+        E3["done: summary message"]
+    end
+
+    SSE -->|"live updates"| UI["🃏 Cards appear\nin real time"]
+
+    subgraph SEC ["🔐 Every API Call"]
+        S1["JWT Auth + Rate Limit"]
+        S2["Retry logic (3×, backoff)"]
+        S3["Context trimming\n(keeps token cost low)"]
+    end
+
+    LOOP -.-> SEC
+```
+
+### Agent Mode Key Files
+
+| File | Role |
+|------|------|
+| `src/components/AgentChat.tsx` | Chat UI, SSE streaming, live progress, card rendering |
+| `server/routes/agentRoutes.js` | Gemini orchestration loop, tool execution, SSE emission, telemetry |
+| `server/tools/agentTools.js` | 4 tool definitions (JSON schema) and execution handlers |
+| `server/services/generationService.js` | Gemini/Imagen API calls with retry logic and prompt building |
+
+### Structured Telemetry
+
+Every Agent Mode session emits structured logs to Cloud Storage with:
+- **`agent.session.start/complete`** — total tokens, estimated USD cost, cards generated
+- **`agent.llm.response`** — per-iteration token counts and finish reasons
+- **`agent.tool.start/done/error`** — tool name, arguments, duration
 
 ## 📁 Project Structure
 

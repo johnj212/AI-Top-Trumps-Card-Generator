@@ -1,54 +1,42 @@
 // Storage wrapper that conditionally uses cloud or local storage based on environment
 
 let storageModule = null;
-let isInitialized = false;
+let initPromise = null; // Promise lock to prevent concurrent initializations
 
 async function initializeStorage() {
-  if (isInitialized) {
-    console.log('📦 Storage already initialized, reusing existing module');
-    return storageModule;
-  }
-  
+  // If already initialized, return immediately
+  if (storageModule) return storageModule;
+  // If initialization is in progress, wait for it — don't start a second one
+  if (!initPromise) initPromise = _doInitialize();
+  return initPromise;
+}
+
+async function _doInitialize() {
   const nodeEnv = process.env.NODE_ENV || 'undefined';
   const isDevelopment = nodeEnv === 'development';
-  
-  console.log(`🔍 Storage initialization:`);
-  console.log(`   NODE_ENV: "${nodeEnv}"`);
-  console.log(`   isDevelopment: ${isDevelopment}`);
-  console.log(`   Available env vars: ${Object.keys(process.env).filter(k => k.includes('NODE')).join(', ')}`);
-  
+
+  console.log(`🔍 Storage initialization: NODE_ENV="${nodeEnv}", isDevelopment=${isDevelopment}`);
+
   try {
     if (isDevelopment) {
-      // Use local storage for development
       console.log('🏠 Loading local storage module (storage-dev.js)...');
       storageModule = await import('./storage-dev.js');
       console.log('✅ Successfully loaded local storage for development environment');
-      console.log(`   Storage path: ${storageModule.getStoragePath ? storageModule.getStoragePath() : 'not available'}`);
     } else {
-      // Use cloud storage for production/UAT
       console.log('☁️ Loading cloud storage module (storage.js)...');
-      const bucketName = process.env.STORAGE_BUCKET;
-      const hasCredentials = !!process.env.GOOGLE_APPLICATION_CREDENTIALS;
-      
-      console.log(`   STORAGE_BUCKET: ${bucketName || 'NOT SET'}`);
-      console.log(`   GOOGLE_APPLICATION_CREDENTIALS: ${hasCredentials ? 'SET' : 'NOT SET'}`);
-      
+      console.log(`   STORAGE_BUCKET: ${process.env.STORAGE_BUCKET || 'NOT SET'}`);
+      console.log(`   GOOGLE_APPLICATION_CREDENTIALS: ${process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'SET' : 'NOT SET'}`);
       storageModule = await import('./storage.js');
       console.log('✅ Successfully loaded Google Cloud Storage for production environment');
     }
-    
-    isInitialized = true;
+
     console.log('🎯 Storage initialization complete');
     return storageModule;
-    
+
   } catch (error) {
-    console.error('❌ Storage initialization failed:', error);
-    console.error('   Error details:', {
-      message: error.message,
-      stack: error.stack,
-      nodeEnv,
-      isDevelopment
-    });
+    // Reset so a retry is possible
+    initPromise = null;
+    console.error('❌ Storage initialization failed:', error.message);
     throw new Error(`Storage initialization failed: ${error.message}`);
   }
 }

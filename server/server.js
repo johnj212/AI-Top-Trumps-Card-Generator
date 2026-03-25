@@ -16,6 +16,7 @@ import { saveImage, saveCard, saveLog, listCards, getStorageStats, getImageSigne
 import { verifyToken } from './middleware/authMiddleware.js';
 import { globalRateLimiter, speedLimiter, rateLimitLogger } from './middleware/rateLimiter.js';
 import authRoutes from './auth/auth.js';
+import { createAgentRouter } from './routes/agentRoutes.js';
 
 console.log('🚀 Starting AI Top Trumps server...');
 console.log('📍 Working directory:', process.cwd());
@@ -145,6 +146,15 @@ try {
   console.log('✅ Authentication routes configured');
 } catch (authError) {
   console.error('❌ FATAL: Failed to configure auth routes:', authError);
+  process.exit(1);
+}
+
+console.log('🤖 Setting up agent routes...');
+try {
+  app.use('/api/agent', createAgentRouter(genAI));
+  console.log('✅ Agent routes configured at /api/agent');
+} catch (agentError) {
+  console.error('❌ FATAL: Failed to configure agent routes:', agentError);
   process.exit(1);
 }
 
@@ -706,6 +716,7 @@ const server = app.listen(port, '0.0.0.0', () => {
   console.log('📋 Available endpoints:');
   console.log('  🔐 POST /api/auth/login - User authentication');
   console.log('  🤖 POST /api/generate - Generate content (images/text)');
+  console.log('  🧠 POST /api/agent/chat - Agentic card generation (SSE streaming)');
   console.log('  💾 POST /api/cards - Save card data');
   console.log('  📚 GET  /api/cards - List stored cards');
   console.log('  📊 GET  /api/storage/stats - Storage statistics');
