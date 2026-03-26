@@ -465,7 +465,7 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-gray-850 rounded-xl border border-gray-700 overflow-hidden" style={{ minHeight: '400px', maxHeight: '600px' }}>
+    <div className="flex flex-col min-h-[320px] max-h-[60vh] lg:max-h-[600px] bg-gray-850 rounded-xl border border-gray-700 overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 bg-gray-800 border-b border-gray-700 shrink-0">
         <span className="text-xl">🧠</span>
