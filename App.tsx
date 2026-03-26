@@ -310,7 +310,7 @@ function App() {
   // Show loading while checking authentication
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-gray-900 flex items-center justify-center">
         <Loader message="Loading..." />
       </div>
     );
@@ -337,7 +337,7 @@ function App() {
 
   // Show main app if authenticated
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 sm:p-8">
+    <div className="min-h-[100dvh] bg-gray-900 text-white p-4 sm:p-8">
       {isLoading && <Loader message={loadingMessage} />}
       
       {error && (
