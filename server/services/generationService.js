@@ -28,7 +28,7 @@ const IMAGE_STYLE_PROMPTS = {
   'Retro 80s Synthwave': 'retro 80s synthwave aesthetic, neon grids, sunset background, vibrant pinks and purples',
   'Watercolor Artistic': 'artistic watercolor rendering, soft edges, beautiful color blending, expressive brushstrokes',
   'Steampunk Mechanical': 'steampunk mechanical illustration, gears, cogs, brass and copper details, intricate machinery',
-  'Neonpunk Transformer': 'neonpunk transformer robot, glowing neon circuitry, mechanical cyberpunk aesthetic, electric glow effects',
+  'Neonpunk Transformer': 'neonpunk cyberpunk aesthetic, glowing neon circuitry patterns, electric glow effects, holographic energy',
 };
 
 async function withRetry(fn, maxAttempts = 3) {
@@ -123,9 +123,10 @@ export async function generateCardIdeasInternal(genAI, theme, imageStyleName, co
 }
 
 export async function generateImageInternal(genAI, imagePrompt) {
+  const guardedPrompt = `Single subject only. No other characters, creatures, or beings in the scene. ${imagePrompt}`;
   const imageResult = await withRetry(() => genAI.models.generateImages({
     model: 'imagen-4.0-generate-001',
-    prompt: imagePrompt,
+    prompt: guardedPrompt,
     config: {
       numberOfImages: 1,
       outputMimeType: 'image/jpeg',
