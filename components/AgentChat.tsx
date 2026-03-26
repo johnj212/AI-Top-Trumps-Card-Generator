@@ -459,11 +459,9 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendMessage();
   };
 
   return (
@@ -524,13 +522,12 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
 
       {/* Input */}
       <div className="shrink-0 p-3 border-t border-gray-700 bg-gray-800">
-        <div className="flex gap-2">
+        <form onSubmit={handleFormSubmit} className="flex gap-2">
           <input
             ref={inputRef}
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
             disabled={isGenerating || awaitingAnswer}
             placeholder={
               awaitingAnswer
@@ -542,13 +539,13 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
             className="flex-1 bg-gray-700 text-white placeholder-gray-500 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
           />
           <button
-            onClick={sendMessage}
+            type="submit"
             disabled={isGenerating || awaitingAnswer || !input.trim()}
             className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
           >
             {isGenerating ? '⏳' : '✨'}
           </button>
-        </div>
+        </form>
         <div className="h-4 mt-1 text-center">
           {selectedColorScheme && selectedImageStyle && (
             <p className="text-gray-600 text-xs">
