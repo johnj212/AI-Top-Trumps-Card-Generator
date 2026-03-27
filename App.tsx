@@ -356,9 +356,10 @@ function App() {
       )}
 
       {/* Mode Toggle */}
-      <div className="flex justify-center gap-2 max-w-7xl mx-auto mb-6">
+      <div className="flex justify-center gap-2 max-w-7xl mx-auto mb-6" data-testid="mode-toggle">
         <button
           onClick={() => setAgentMode(false)}
+          data-testid="design-mode-btn"
           className={`px-5 py-2 rounded-xl font-bold text-sm transition-colors ${
             !agentMode
               ? 'bg-orange-500 text-white'
@@ -369,6 +370,7 @@ function App() {
         </button>
         <button
           onClick={() => setAgentMode(true)}
+          data-testid="agent-mode-btn"
           className={`px-5 py-2 rounded-xl font-bold text-sm transition-colors ${
             agentMode
               ? 'bg-purple-600 text-white'

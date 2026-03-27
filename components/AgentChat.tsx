@@ -489,7 +489,9 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
           }
           return (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+              <div
+                {...(msg.role === 'agent' && msg.text.startsWith('Sorry, I ran into an issue') ? { 'data-testid': 'agent-error' } : {})}
+                className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                 msg.role === 'user'
                   ? 'bg-purple-700 text-white rounded-tr-sm'
                   : 'bg-gray-700 text-gray-100 rounded-tl-sm'
@@ -509,7 +511,7 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
         {/* Live progress for in-flight generation */}
         {isGenerating && liveProgress.length > 0 && (
           <div className="flex justify-start">
-            <div className="max-w-[85%] bg-gray-700 rounded-2xl rounded-tl-sm px-4 py-3">
+            <div data-testid="agent-progress-events" className="max-w-[85%] bg-gray-700 rounded-2xl rounded-tl-sm px-4 py-3">
               <span className="text-lg mr-2">🤖</span>
               <span className="text-gray-300 text-sm">On it!</span>
               <ProgressDisplay items={liveProgress} />
@@ -529,6 +531,7 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
             value={input}
             onChange={e => setInput(e.target.value)}
             disabled={isGenerating || awaitingAnswer}
+            data-testid="agent-chat-input"
             placeholder={
               awaitingAnswer
                 ? 'Choose an option above...'
@@ -541,6 +544,7 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
           <button
             type="submit"
             disabled={isGenerating || awaitingAnswer || !input.trim()}
+            data-testid="agent-submit-btn"
             className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
           >
             {isGenerating ? '⏳' : '✨'}

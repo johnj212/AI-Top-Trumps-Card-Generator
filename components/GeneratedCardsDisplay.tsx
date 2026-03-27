@@ -83,6 +83,7 @@ const GeneratedCardsDisplay: React.FC<GeneratedCardsDisplayProps> = ({ cards, co
         <button
           onClick={handleBulkDownload}
           disabled={isBulkExporting || cards.length === 0}
+          data-testid="download-all-btn"
           className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 disabled:cursor-not-allowed"
           title="Download all cards"
         >
@@ -102,9 +103,9 @@ const GeneratedCardsDisplay: React.FC<GeneratedCardsDisplayProps> = ({ cards, co
         </button>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div data-testid="generated-cards-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {cards.map((card, index) => (
-          <div key={card.id} className="flex flex-col items-center gap-4">
+          <div key={card.id} data-testid={`generated-card-${index}`} className="flex flex-col items-center gap-4">
             <div ref={(el) => cardRefs.current[index] = el}>
               <CardPreview
                 cardData={card}

@@ -38,9 +38,10 @@ const CardPreview: React.FC<CardPreviewProps> = ({ cardData, colorScheme, isImag
       
       {/* Download button - only show if not hidden */}
       {!hideDownloadButton && (
-        <button 
+        <button
           onClick={handleDownload}
           disabled={isExporting || isImageLoading}
+          data-testid="card-download-btn"
           className="absolute top-2 left-2 z-40 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-500 text-white rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-105 disabled:hover:scale-100"
           title="Download card as image"
         >
@@ -50,9 +51,10 @@ const CardPreview: React.FC<CardPreviewProps> = ({ cardData, colorScheme, isImag
         </button>
       )}
 
-      <div 
+      <div
         ref={cardRef}
-        className={`relative w-full aspect-[62/100] rounded-2xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${colorScheme.background} border-4 ${colorScheme.accent}`} 
+        data-testid="card-preview"
+        className={`relative w-full aspect-[62/100] rounded-2xl overflow-hidden shadow-2xl flex flex-col transition-all duration-300 ${colorScheme.background} border-4 ${colorScheme.accent}`}
         style={{fontFamily: "'Teko', sans-serif"}}
       >
 
@@ -82,10 +84,10 @@ const CardPreview: React.FC<CardPreviewProps> = ({ cardData, colorScheme, isImag
       <div className="w-full flex flex-col flex-shrink-0">
         {/* Title Banner */}
         <div className={`w-full bg-gray-900 px-4 py-2 flex items-center justify-center border-t-4 border-b-4 ${colorScheme.accent}`}>
-          <h1 className={`${titleFontSizeClass} font-bold uppercase text-center text-white whitespace-nowrap truncate`}>{title}</h1>
+          <h1 data-testid="card-title" className={`${titleFontSizeClass} font-bold uppercase text-center text-white whitespace-nowrap truncate`}>{title}</h1>
         </div>
         {/* Stats - 2 columns, scroll if overflow */}
-        <div className={`p-2 flex flex-row justify-center gap-2 bg-black border-t-0 ${colorScheme.accent} overflow-y-auto`} style={{ maxHeight: 'calc(100% - 2.5rem)' }}>
+        <div data-testid="card-stats" className={`p-2 flex flex-row justify-center gap-2 bg-black border-t-0 ${colorScheme.accent} overflow-y-auto`} style={{ maxHeight: 'calc(100% - 2.5rem)' }}>
           <div className="flex flex-col space-y-1 w-1/2">
             {stats.slice(0, 3).map((stat, index) => (
               <div key={index} className="grid grid-cols-5 gap-1 items-center text-xs">
@@ -150,7 +152,7 @@ const RarityDisplay: React.FC<{ rarity: Rarity, accentBorderClass: string }> = (
     textShadow: textShadow,
   } as React.CSSProperties;
   return (
-    <div className={`absolute top-2 right-2 z-10 px-2 py-0.5 bg-black/70 rounded-md border-2 ${accentBorderClass} font-roboto-condensed`}>
+    <div data-testid="card-rarity-badge" className={`absolute top-2 right-2 z-10 px-2 py-0.5 bg-black/70 rounded-md border-2 ${accentBorderClass} font-roboto-condensed`}>
       <div className={`flex items-center gap-2 ${config.textColor}`} style={style}>
         <span className="text-sm font-bold tracking-widest">{config.text}</span>
         <span className="text-base">{config.stars}</span>

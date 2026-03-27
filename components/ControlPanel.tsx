@@ -72,19 +72,19 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-lg font-bold text-gray-300 mb-1">Theme</label>
-                    <select value={selectedTheme.name} onChange={e => onThemeChange(THEMES.find(t => t.name === e.target.value)!)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <select value={selectedTheme.name} onChange={e => onThemeChange(THEMES.find(t => t.name === e.target.value)!)} data-testid="theme-select" className="w-full p-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
                         {THEMES.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
                     </select>
                 </div>
                 <div>
                     <label className="block text-lg font-bold text-gray-300 mb-1">Color Scheme</label>
-                    <select value={selectedColorScheme.name} onChange={e => setSelectedColorScheme(COLOR_SCHEMES.find(c => c.name === e.target.value)!)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <select value={selectedColorScheme.name} onChange={e => setSelectedColorScheme(COLOR_SCHEMES.find(c => c.name === e.target.value)!)} data-testid="color-scheme-select" className="w-full p-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
                         {COLOR_SCHEMES.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                     </select>
                 </div>
                 <div className="md:col-span-2">
                     <label className="block text-lg font-bold text-gray-300 mb-1">Image Style</label>
-                    <select value={selectedImageStyle.name} onChange={e => setSelectedImageStyle(IMAGE_STYLES.find(s => s.name === e.target.value)!)} className="w-full p-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
+                    <select value={selectedImageStyle.name} onChange={e => setSelectedImageStyle(IMAGE_STYLES.find(s => s.name === e.target.value)!)} data-testid="image-style-select" className="w-full p-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-orange-500">
                         {IMAGE_STYLES.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
                     </select>
                 </div>
@@ -110,14 +110,26 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
 
             {/* Action Buttons */}
             <div className="flex flex-col gap-4 pt-4 border-t border-gray-700">
-                <button 
-                    onClick={onGeneratePreview} 
-                    disabled={isLoading} 
+                <button
+                    onClick={onGeneratePreview}
+                    disabled={isLoading}
+                    data-testid="generate-preview-btn"
                     className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-teal-600 hover:bg-teal-700 rounded-lg text-xl font-bold transition-all duration-200 disabled:bg-gray-500 disabled:cursor-not-allowed transform hover:scale-105"
                 >
                     <GenerateIcon className="w-7 h-7" />
                     {isLoading ? 'Generating...' : 'Generate Preview Card'}
                 </button>
+                {isPreviewGenerated && (
+                    <button
+                        onClick={onGeneratePack}
+                        disabled={isLoading}
+                        data-testid="generate-pack-btn"
+                        className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-orange-600 hover:bg-orange-700 rounded-lg text-xl font-bold transition-all duration-200 disabled:bg-gray-500 disabled:cursor-not-allowed transform hover:scale-105"
+                    >
+                        <GenerateIcon className="w-7 h-7" />
+                        {isLoading ? 'Generating...' : 'Generate Full Pack'}
+                    </button>
+                )}
                 {onOpenLibrary && (
                     <button 
                         onClick={onOpenLibrary} 

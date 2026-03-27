@@ -43,6 +43,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerData, onLogout }) =
         </div>
         <button
           onClick={handleLogout}
+          data-testid="logout-btn"
           className="bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white px-3 py-1 rounded text-sm transition-colors duration-200"
           title="Logout"
         >
