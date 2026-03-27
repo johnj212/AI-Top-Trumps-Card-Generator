@@ -1,0 +1,17 @@
+{
+  "kind": "json",
+  "data": [
+    {
+      "title": "Test Dragon",
+      "imagePrompt": "a majestic dragon in a fantasy art style",
+      "stats": [
+        { "name": "Speed", "value": 75 },
+        { "name": "Power", "value": 90 },
+        { "name": "Strength", "value": 85 },
+        { "name": "Agility", "value": 70 },
+        { "name": "Intelligence", "value": 60 },
+        { "name": "Stamina", "value": 80 }
+      ]
+    }
+  ]
+}

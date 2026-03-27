@@ -1,0 +1,18 @@
+data: {"type":"tool_start","tool":"select_theme","input":{}}
+
+data: {"type":"tool_done","tool":"select_theme","result":{"theme":"Fantasy"}}
+
+data: {"type":"tool_start","tool":"set_series_name","input":{}}
+
+data: {"type":"tool_done","tool":"set_series_name","result":{"seriesName":"Epic Fantasy Collection"}}
+
+data: {"type":"tool_start","tool":"generate_card_ideas","input":{}}
+
+data: {"type":"tool_done","tool":"generate_card_ideas","result":{"ideas":[{"title":"Test Dragon","imagePrompt":"a majestic dragon","stats":[{"name":"Speed","value":75},{"name":"Power","value":90},{"name":"Strength","value":85},{"name":"Agility","value":70},{"name":"Intelligence","value":60},{"name":"Stamina","value":80}]}]}}
+
+data: {"type":"tool_start","tool":"generate_and_save_card","input":{"title":"Test Dragon"}}
+
+data: {"type":"card_complete","card":{"id":"agent-card-test-1","title":"Test Dragon","series":"Epic Fantasy Collection","image":"data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AJQAB/9k=","stats":[{"name":"Speed","value":75},{"name":"Power","value":90},{"name":"Strength","value":85},{"name":"Agility","value":70},{"name":"Intelligence","value":60},{"name":"Stamina","value":80}],"rarity":"Rare","cardNumber":1,"totalCards":1}}
+
+data: {"type":"done"}
+
