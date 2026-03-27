@@ -7,7 +7,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 const agentEventsText = readFileSync(
-  join(__dirname, '../fixtures/agent-events.txt'),
+  join(process.cwd(), 'e2e/fixtures/agent-events.txt'),
   'utf-8'
 );
 
@@ -41,12 +41,12 @@ export async function setupMocks(page: Page): Promise<void> {
 
   // Auth logout
   await page.route('**/api/auth/logout', async (route) => {
-    await route.fulfill({ status: 200, body: '{}' });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   });
 
   // Generate endpoint — route based on modelName in request body
   await page.route('**/api/generate', async (route) => {
-    const body = route.request().postDataJSON() as { modelName: string };
+    const body = route.request().postDataJSON() as { modelName: string; prompt?: string };
     if (body.modelName === 'imagen-4.0-generate-001') {
       await route.fulfill({
         status: 200,
@@ -54,9 +54,10 @@ export async function setupMocks(page: Page): Promise<void> {
         body: JSON.stringify(imageFixture),
       });
     } else {
-      // Text generation — return stats or card ideas based on prompt content
-      const prompt = (body as any).prompt as string;
-      if (prompt && prompt.toLowerCase().includes('card idea')) {
+      // Text generation — card-ideas prompts always start with the creative assistant preamble;
+      // stats generation is done locally and never calls this endpoint, so any text request here
+      // is a card-ideas request. Check the distinctive prefix as a safety net.
+      if (body.prompt && body.prompt.startsWith('You are a creative assistant for a Top Trumps card game')) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -88,9 +89,9 @@ export async function setupMocks(page: Page): Promise<void> {
   // Cards save/list
   await page.route('**/api/cards', async (route) => {
     if (route.request().method() === 'POST') {
-      await route.fulfill({ status: 200, body: '{"success":true}' });
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"success":true}' });
     } else {
-      await route.fulfill({ status: 200, body: '{"cards":[]}' });
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"cards":[]}' });
     }
   });
 }
