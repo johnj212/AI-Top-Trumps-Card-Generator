@@ -7,6 +7,16 @@ interface LoginScreenProps {
   onError: (error: string) => void;
 }
 
+// Deterministic star positions for background
+const LOGIN_STARS = Array.from({ length: 15 }, (_, i) => ({
+  id: i,
+  top:      `${(i * 17 + 3) % 95}%`,
+  left:     `${(i * 29 + 11) % 95}%`,
+  size:     `${2 + (i % 3)}px`,
+  delay:    `${((i * 0.4) % 2.5).toFixed(1)}s`,
+  duration: `${1.8 + (i % 2) * 0.8}s`,
+}));
+
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onError }) => {
   const [playerCode, setPlayerCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,27 +31,22 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onError }) => {
       return;
     }
 
-    // Clear any previous errors before attempting login
     onError('');
     setLocalError('');
     setIsLoading(true);
 
     try {
       const result = await authService.login(playerCode.trim());
-      console.log('Login result:', result);
 
       if (result.success && result.playerData) {
-        console.log('Login successful');
         setLocalError('');
         onLogin(result.playerData);
       } else {
         const errorMessage = result.error || 'Login failed. Please check your player code.';
-        console.log('Login failed, calling onError with:', errorMessage);
         setLocalError(errorMessage);
         onError(errorMessage);
       }
     } catch (error) {
-      console.log('Login exception caught:', error);
       const errorMessage = 'An unexpected error occurred. Please try again.';
       setLocalError(errorMessage);
       onError(errorMessage);
@@ -51,96 +56,118 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onError }) => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toUpperCase().slice(0, 10); // Limit to 10 characters, uppercase
+    const value = e.target.value.toUpperCase().slice(0, 10);
     setPlayerCode(value);
   };
 
   return (
-    <div className="min-h-[100dvh] bg-gray-900 flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <div className="text-6xl mb-4">🃏</div>
-          <h1 className="text-4xl font-bold text-white mb-2">
-            AI Top Trumps
+    <div className="min-h-[100dvh] bg-arcade-deep flex items-center justify-center p-4 relative overflow-hidden">
+
+      {/* Star particles */}
+      {LOGIN_STARS.map(s => (
+        <span
+          key={s.id}
+          className="absolute rounded-full bg-white pointer-events-none"
+          style={{
+            top: s.top,
+            left: s.left,
+            width: s.size,
+            height: s.size,
+            animation: `starTwinkle ${s.duration} ${s.delay} ease-in-out infinite`,
+          }}
+        />
+      ))}
+
+      {/* Arcade grid */}
+      <div className="absolute inset-0 arcade-grid-bg pointer-events-none" />
+
+      {/* Login card */}
+      <div className="relative z-10 w-full max-w-sm">
+
+        {/* Hero section */}
+        <div className="text-center mb-8">
+          <div className="text-7xl mb-4 inline-block animate-bounce">🃏</div>
+          <h1 className="font-fredoka text-5xl text-arcade-primary neon-text-purple leading-tight">
+            Top Trumps AI
           </h1>
-          <p className="text-gray-400 text-lg">
+          <p className="font-nunito text-arcade-dim mt-2 text-base">
             Card Generator
           </p>
         </div>
 
-        {/* Login Form */}
-        <div className="bg-gray-800 rounded-lg p-8 shadow-2xl border border-gray-700">
+        {/* Form panel */}
+        <div className="bg-arcade-card/90 backdrop-blur-sm border-2 border-arcade-primary/40 rounded-2xl p-8 shadow-2xl shadow-arcade-primary/20">
+
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="font-fredoka text-2xl text-arcade-text">
               Enter Player Code
             </h2>
-            <p className="text-gray-400 text-sm">
-              Enter your player code to access the card generator
+            <p className="font-nunito text-arcade-dim text-sm mt-1">
+              Type your code to start generating cards!
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="playerCode" className="block text-sm font-medium text-gray-300 mb-2">
-                Player Code
-              </label>
               <input
                 id="playerCode"
                 type="text"
                 value={playerCode}
                 onChange={handleInputChange}
                 placeholder="PLAYER1"
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-center text-xl font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-6 py-4 bg-arcade-panel border-2 border-arcade-primary/50 rounded-xl text-arcade-text text-center text-2xl font-mono tracking-[0.3em] focus:outline-none focus:border-arcade-primary transition-all placeholder-arcade-dim/50 disabled:opacity-50"
+                style={{
+                  fontSize: '24px',
+                  boxShadow: playerCode ? '0 0 20px rgba(108, 99, 255, 0.3)' : 'none',
+                }}
                 disabled={isLoading}
                 maxLength={10}
                 autoComplete="off"
+                autoCapitalize="characters"
               />
             </div>
 
             {localError && (
-              <div className="bg-red-900 border-2 border-red-600 text-white px-4 py-3 rounded-lg" role="alert">
-                <div className="flex items-center">
-                  <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                  <span className="font-medium">{localError}</span>
-                </div>
+              <div className="bg-red-900/80 border-2 border-red-500 text-white px-4 py-3 rounded-xl font-nunito text-sm" role="alert">
+                ⚠️ {localError}
               </div>
             )}
 
             <button
               type="submit"
               disabled={isLoading || playerCode.length === 0}
-              className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition duration-200 text-lg"
+              className="w-full py-4 px-6 rounded-xl font-fredoka text-xl text-white transition-all
+                bg-arcade-accent hover:bg-[#ff8555]
+                disabled:bg-arcade-panel disabled:text-arcade-dim disabled:cursor-not-allowed
+                hover:shadow-[0_0_24px_rgba(255,107,53,0.5)] hover:scale-[1.02] active:scale-[0.98]"
             >
               {isLoading ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                <span className="flex items-center justify-center gap-2">
+                  <span className="inline-block w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Logging In...
-                </div>
+                </span>
               ) : (
-                'Start Playing'
+                '🚀 Start Playing'
               )}
             </button>
           </form>
 
-          {/* Help Section */}
-          <div className="mt-6 pt-6 border-t border-gray-700">
+          {/* Help section */}
+          <div className="mt-6 pt-5 border-t border-arcade-primary/20">
             <button
               type="button"
               onClick={() => setShowHint(!showHint)}
-              className="text-gray-400 hover:text-white text-sm underline w-full text-center"
+              className="font-nunito text-arcade-dim hover:text-arcade-text text-sm underline w-full text-center transition-colors"
             >
               Need help? Click for hint
             </button>
-            
+
             {showHint && (
-              <div className="mt-4 p-4 bg-gray-700 rounded-lg text-sm">
-                <p className="text-gray-300">
-                  <span className="font-bold text-orange-400">Need a player code?</span>
+              <div className="mt-4 p-4 bg-arcade-panel rounded-xl border border-arcade-primary/20 font-nunito text-sm">
+                <p className="text-arcade-dim">
+                  <span className="font-bold text-arcade-accent">Need a player code?</span>
                   <br />
-                  Player codes are alphanumeric (letters and numbers). Contact an admin to get your player code.
+                  Player codes are letters and numbers. Ask an admin to get yours!
                 </p>
               </div>
             )}
@@ -148,9 +175,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onError }) => {
         </div>
 
         {/* Footer */}
-        <div className="text-center text-gray-500 text-sm">
-          <p>🔒 Your privacy is protected. No personal information is collected.</p>
-        </div>
+        <p className="text-center font-nunito text-arcade-dim text-xs mt-6">
+          🔒 Your privacy is protected. No personal data collected.
+        </p>
       </div>
     </div>
   );
