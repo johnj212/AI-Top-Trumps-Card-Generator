@@ -5,9 +5,10 @@ import type { PlayerData } from '../../types';
 interface PlayerProfileProps {
   playerData: PlayerData;
   onLogout: () => void;
+  compact?: boolean;
 }
 
-const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerData, onLogout }) => {
+const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerData, onLogout, compact }) => {
   const handleLogout = () => {
     authService.logout();
     onLogout();
@@ -25,26 +26,40 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerData, onLogout }) =
     }
   };
 
+  // Compact version for TopBar
+  if (compact) {
+    return (
+      <button
+        onClick={handleLogout}
+        title="Tap to logout"
+        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-arcade-primary/20 border border-arcade-primary/40 text-arcade-primary hover:bg-arcade-primary/30 transition-all font-nunito text-sm font-bold"
+      >
+        <span>🎮</span>
+        <span>{playerData.playerCode}</span>
+      </button>
+    );
+  }
+
+  // Full version for desktop sidebar
   return (
-    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 mb-6">
+    <div className="bg-arcade-panel border border-arcade-primary/20 rounded-xl p-4 shadow-lg">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="bg-orange-600 rounded-full p-2">
-            <span className="text-white text-lg">🎮</span>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-arcade-primary/20 border-2 border-arcade-primary flex items-center justify-center flex-shrink-0">
+            <span className="text-lg">🎮</span>
           </div>
           <div>
-            <h3 className="text-white font-bold text-lg">
-              Player: {playerData.playerCode}
-            </h3>
-            <p className="text-gray-400 text-sm">
+            <p className="font-fredoka text-arcade-primary text-base leading-tight">
+              {playerData.playerCode}
+            </p>
+            <p className="font-nunito text-arcade-dim text-xs">
               Active since {formatDate(playerData.createdAt)}
             </p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white px-3 py-1 rounded text-sm transition-colors duration-200"
-          title="Logout"
+          className="px-3 py-1.5 rounded-lg bg-arcade-card border border-arcade-dim/40 font-nunito text-arcade-dim text-sm hover:text-arcade-text hover:border-arcade-dim transition-all"
         >
           Logout
         </button>

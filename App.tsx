@@ -1,6 +1,5 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
-import ControlPanel from './components/ControlPanel';
+import React, { useState, useEffect } from 'react';
 import CardPreview from './components/CardPreview';
 import GeneratedCardsDisplay from './components/GeneratedCardsDisplay';
 import CardLibrary from './components/CardLibrary';
@@ -8,20 +7,22 @@ import AgentChat from './components/AgentChat';
 import Loader from './components/Loader';
 import LoginScreen from './components/auth/LoginScreen';
 import PlayerProfile from './components/auth/PlayerProfile';
-import { generateCardIdeas, generateImage, generateStatsValues } from './services/geminiService';
 import { authService } from './services/authService';
-import { cardStorageService } from './services/cardStorageService';
 import { cardRecreationService, type RecreatedCard } from './services/cardRecreationService';
-import type { CardData, StoredCardData, ColorScheme, ImageStyle, Theme, Rarity, AuthState, PlayerData } from './types';
-import { COLOR_SCHEMES, DEFAULT_CARD_DATA, IMAGE_STYLES, THEMES } from './constants';
+import type { CardData, ColorScheme, ImageStyle, AuthState, PlayerData } from './types';
+import { COLOR_SCHEMES, IMAGE_STYLES } from './constants';
 
-const getRandomRarity = (): Rarity => {
-    const rand = Math.random() * 100;
-    if (rand < 3) return 'Legendary'; // 3%
-    if (rand < 15) return 'Epic';      // 12%
-    if (rand < 40) return 'Rare';      // 25%
-    return 'Common';                   // 60%
-};
+type AppTab = 'chat' | 'library';
+
+// Deterministic star positions (avoids Math.random during render)
+const STARS = Array.from({ length: 20 }, (_, i) => ({
+  id: i,
+  top:      `${(i * 13 + 7) % 97}%`,
+  left:     `${(i * 23 + 5) % 97}%`,
+  size:     `${2 + (i % 3)}px`,
+  delay:    `${((i * 0.3) % 3).toFixed(1)}s`,
+  duration: `${2 + (i % 2)}s`,
+}));
 
 function App() {
   // Authentication state
@@ -32,21 +33,13 @@ function App() {
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  // Game state
-  const [cardData, setCardData] = useState<CardData>(DEFAULT_CARD_DATA);
-  const [selectedTheme, setSelectedTheme] = useState<Theme>(THEMES[1]);
+  // UI state
   const [selectedColorScheme, setSelectedColorScheme] = useState<ColorScheme>(COLOR_SCHEMES[0]);
   const [selectedImageStyle, setSelectedImageStyle] = useState<ImageStyle>(IMAGE_STYLES[0]);
-  
   const [generatedCards, setGeneratedCards] = useState<CardData[]>([]);
-  const [previewCard, setPreviewCard] = useState<CardData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [shouldSaveCards, setShouldSaveCards] = useState(true);
-  const [previewCardPrompt, setPreviewCardPrompt] = useState<string>('');
   const [isCardLibraryOpen, setIsCardLibraryOpen] = useState(false);
-  const [agentMode, setAgentMode] = useState(false);
+  const [activeTab, setActiveTab] = useState<AppTab>('chat');
 
   // Check for existing authentication on app load
   useEffect(() => {
@@ -56,332 +49,132 @@ function App() {
         if (isValidToken) {
           const currentPlayerData = authService.getPlayerData();
           if (currentPlayerData) {
-            setAuthState({
-              isAuthenticated: true,
-              playerCode: currentPlayerData.playerCode
-            });
+            setAuthState({ isAuthenticated: true, playerCode: currentPlayerData.playerCode });
             setPlayerData(currentPlayerData);
           }
         }
       }
       setIsAuthLoading(false);
     };
-
     initAuth();
   }, []);
 
-  // Authentication handlers
   const handleLogin = (loginPlayerData: PlayerData) => {
-    setAuthState({
-      isAuthenticated: true,
-      playerCode: loginPlayerData.playerCode
-    });
+    setAuthState({ isAuthenticated: true, playerCode: loginPlayerData.playerCode });
     setPlayerData(loginPlayerData);
     setError(null);
   };
 
   const handleLogout = async () => {
     await authService.logout();
-    setAuthState({
-      isAuthenticated: false,
-      playerCode: undefined
-    });
+    setAuthState({ isAuthenticated: false, playerCode: undefined });
     setPlayerData(null);
-    // Clear game state
     setGeneratedCards([]);
-    setPreviewCard(null);
-    setCardData(DEFAULT_CARD_DATA);
   };
 
   const handleAuthError = (errorMessage: string) => {
-    // Treat empty strings as null to clear the error
-    console.log('handleAuthError called with:', errorMessage);
     setError(errorMessage || null);
-    console.log('Error state set to:', errorMessage || null);
   };
 
   const handleLoadCard = (recreatedCard: RecreatedCard) => {
-    // Load the card data into the preview
-    setCardData(recreatedCard.cardData);
-    setPreviewCard(recreatedCard.cardData);
-    
-    // Set the generation settings to match the original
-    const settings = cardRecreationService.getGenerationSettings({
-      ...recreatedCard.cardData,
-      theme: recreatedCard.metadata.theme,
-      colorScheme: recreatedCard.metadata.colorScheme,
-      imageStyle: recreatedCard.metadata.imageStyle,
-      imagePrompt: recreatedCard.metadata.imagePrompt,
-      persistentImageUrl: recreatedCard.cardData.image,
-      imageFilename: `${recreatedCard.cardData.id}.jpg`,
-      generatedAt: recreatedCard.metadata.generatedAt
-    });
-    
-    setSelectedTheme(settings.theme);
-    setSelectedColorScheme(settings.colorScheme);
-    setSelectedImageStyle(settings.imageStyle);
-    setPreviewCardPrompt(recreatedCard.metadata.imagePrompt);
-    
-    // Close the library
+    setGeneratedCards(prev => [recreatedCard.cardData, ...prev]);
     setIsCardLibraryOpen(false);
-    
-    console.log(`✅ Loaded card from library: ${recreatedCard.cardData.title}`);
+    setActiveTab('chat');
   };
 
-  const handleThemeChange = useCallback(async (theme: Theme) => {
-      setSelectedTheme(theme);
-      setIsLoading(true);
-      setLoadingMessage(`Setting up ${theme.name} stats...`);
-      try {
-          // Use predefined stats from the theme, generate only the values
-          const newStats = await generateStatsValues(theme.stats);
-          // Auto-generate series name based on theme
-          const autoSeries = `${theme.name} Collection`;
-          setCardData(prev => ({
-              ...prev,
-              series: autoSeries,
-              stats: newStats
-          }));
-          setPreviewCard(null); // Reset preview when theme changes
-          setGeneratedCards([]); // Clear old cards
-      } catch (e: any) {
-          setError(e.message || 'An unknown error occurred.');
-      } finally {
-          setIsLoading(false);
-      }
-  }, []);
-
-  const handleGeneratePreview = async () => {
-    console.log('🎯 handleGeneratePreview called, shouldSaveCards:', shouldSaveCards);
-    setIsLoading(true);
-    setError(null);
-    setGeneratedCards([]);
-    setPreviewCard(null);
-    setLoadingMessage('Generating preview card idea...');
-
-    try {
-      const cardIdeas = await generateCardIdeas(selectedTheme.name, selectedImageStyle, cardData.stats, 1);
-      const cardIdea = cardIdeas && cardIdeas.length > 0 ? cardIdeas[0] : undefined;
-      if (!cardIdea || !cardIdea.title || !cardIdea.imagePrompt || !Array.isArray(cardIdea.stats)) {
-        setError('Failed to generate a valid card idea. Please try again.');
-        return;
-      }
-      const cardId = `card-preview-${Date.now()}`;
-      const series = `${selectedTheme.name} Collection`;
-      
-      setLoadingMessage(`Generating image for ${cardIdea.title}...`);
-      const imageBase64 = await generateImage(cardIdea.imagePrompt, cardId, series);
-
-      const newPreviewCardData = {
-        id: cardId,
-        title: cardIdea.title,
-        series: series,
-        image: `data:image/jpeg;base64,${imageBase64}`,
-        stats: cardIdea.stats,
-        rarity: getRandomRarity(),
-        cardNumber: 1,
-        totalCards: 4,
-      };
-
-      setCardData(newPreviewCardData); // Update the live preview
-      setPreviewCard(newPreviewCardData); // Save for the final pack
-      setPreviewCardPrompt(cardIdea.imagePrompt); // Store the prompt for later saving
-
-      // Save preview card to storage if enabled
-      if (shouldSaveCards) {
-        try {
-          setLoadingMessage('Saving preview card to storage...');
-          console.log('💾 Saving preview card to storage:', newPreviewCardData.title);
-          
-          const storedCard = cardStorageService.enhanceCardWithStorageData(
-            newPreviewCardData,
-            selectedTheme.name,
-            selectedColorScheme.name,
-            selectedImageStyle.name,
-            cardIdea.imagePrompt
-          );
-          
-          await cardStorageService.saveCard(storedCard);
-          console.log('✅ Preview card saved to storage successfully:', newPreviewCardData.title);
-          
-        } catch (saveError) {
-          console.warn('⚠️ Failed to save preview card to storage:', saveError);
-          // Don't show error to user as generation was successful
-        }
-      }
-
-    } catch (e: any) {
-      setError(e.message || 'An unknown error occurred during preview generation.');
-    } finally {
-      setIsLoading(false);
-      setLoadingMessage('');
+  const handleTabChange = (tab: AppTab) => {
+    if (tab === 'library') {
+      setIsCardLibraryOpen(true);
+    } else {
+      setActiveTab(tab);
     }
   };
 
-  const handleGeneratePack = async () => {
-    console.log('🎯 handleGeneratePack called, shouldSaveCards:', shouldSaveCards, 'previewCard:', previewCard?.title);
-    if (!previewCard) {
-        setError("Please generate a preview card first.");
-        return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    setGeneratedCards([]);
-    setLoadingMessage('Generating rest of pack...');
-
-    try {
-        const newCards: CardData[] = [previewCard]; // Start with the preview card
-        const cardPrompts: string[] = [previewCardPrompt]; // Store prompts for storage
-
-        // Generate 3 additional cards one at a time
-        for (let i = 0; i < 3; i++) {
-          setLoadingMessage(`Generating card ${i + 2} of 4...`);
-          
-          // Generate a single card idea
-          const cardIdeas = await generateCardIdeas(selectedTheme.name, selectedImageStyle, cardData.stats, 1, previewCard.title);
-          const cardIdea = cardIdeas && cardIdeas.length > 0 ? cardIdeas[0] : undefined;
-          
-          if (!cardIdea || !cardIdea.title || !cardIdea.imagePrompt || !Array.isArray(cardIdea.stats)) {
-            console.warn(`Failed to generate card ${i + 2}, skipping...`);
-            continue;
-          }
-          
-          const cardId = `card-${Date.now()}-${i}`;
-          const series = `${selectedTheme.name} Collection`;
-          
-          setLoadingMessage(`Generating image for ${cardIdea.title}... (${i + 2}/4)`);
-          const imageBase64 = await generateImage(cardIdea.imagePrompt, cardId, series);
-
-          newCards.push({
-            id: cardId,
-            title: cardIdea.title,
-            series: series,
-            image: `data:image/jpeg;base64,${imageBase64}`,
-            stats: cardIdea.stats,
-            rarity: getRandomRarity(),
-            cardNumber: i + 2, // Start from card 2
-            totalCards: 4,
-          });
-          
-          // Store the actual image prompt used
-          cardPrompts.push(cardIdea.imagePrompt);
-        }
-
-        setGeneratedCards(newCards);
-
-        // Save cards to storage if enabled
-        console.log(`💾 Pack generation complete. shouldSaveCards: ${shouldSaveCards}, cards count: ${newCards.length}`);
-        if (shouldSaveCards) {
-          try {
-            setLoadingMessage('Saving pack cards to storage...');
-            console.log('💾 Saving pack cards to storage:', newCards.map(c => c.title));
-            
-            const storedCards: StoredCardData[] = newCards.map((card, index) => 
-              cardStorageService.enhanceCardWithStorageData(
-                card,
-                selectedTheme.name,
-                selectedColorScheme.name,
-                selectedImageStyle.name,
-                cardPrompts[index] || `${selectedImageStyle.promptSuffix} art of ${card.title}`
-              )
-            );
-            
-            await cardStorageService.saveCardPack(storedCards);
-            console.log('✅ Pack cards saved to storage successfully:', storedCards.length, 'cards');
-            
-          } catch (saveError) {
-            console.error('❌ Failed to save pack cards to storage:', saveError);
-            // Don't show error to user as generation was successful
-          }
-        } else {
-          console.log('⚠️ Card saving is disabled, skipping storage');
-        }
-
-    } catch (e: any) {
-        setError(e.message || 'An unknown error occurred during pack generation.');
-    } finally {
-        setIsLoading(false);
-        setLoadingMessage('');
-    }
-  };
-
-
-  // Show loading while checking authentication
+  // Loading auth check
   if (isAuthLoading) {
     return (
-      <div className="min-h-[100dvh] bg-gray-900 flex items-center justify-center">
+      <div className="min-h-[100dvh] bg-arcade-deep flex items-center justify-center">
         <Loader message="Loading..." />
       </div>
     );
   }
 
-  // Show login screen if not authenticated
+  // Login screen
   if (!authState.isAuthenticated) {
     return (
       <>
         <LoginScreen onLogin={handleLogin} onError={handleAuthError} />
-        
         {error && (
-          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-800 border border-red-600 text-white px-4 py-3 rounded-lg relative z-50" role="alert">
-            <strong className="font-bold">Error:</strong>
-            <span className="block sm:inline ml-2">{error}</span>
-            <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError(null)}>
-              <svg className="fill-current h-6 w-6 text-white" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
-            </span>
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-900/90 border-2 border-red-500 text-white px-4 py-3 rounded-xl shadow-xl max-w-sm w-[calc(100%-2rem)] animate-bounce-in">
+            <strong className="font-nunito font-bold">Error: </strong>
+            <span className="font-nunito">{error}</span>
+            <button className="absolute top-2 right-2 text-white/70 hover:text-white" onClick={() => setError(null)}>✕</button>
           </div>
         )}
       </>
     );
   }
 
-  // Show main app if authenticated
+  // Main app
   return (
-    <div className="min-h-[100dvh] bg-gray-900 text-white p-4 sm:p-8">
-      {isLoading && <Loader message={loadingMessage} />}
-      
-      {error && (
-        <div className="bg-red-800 border border-red-600 text-white px-4 py-3 rounded-lg relative mb-6 max-w-4xl mx-auto" role="alert">
-          <strong className="font-bold">Error:</strong>
-          <span className="block sm:inline ml-2">{error}</span>
-          <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={() => setError(null)}>
-            <svg className="fill-current h-6 w-6 text-white" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+    <div className="min-h-[100dvh] bg-arcade-deep text-arcade-text relative overflow-x-hidden">
+
+      {/* Star particle background */}
+      {STARS.map(s => (
+        <span
+          key={s.id}
+          className="absolute rounded-full bg-white pointer-events-none z-0"
+          style={{
+            top: s.top,
+            left: s.left,
+            width: s.size,
+            height: s.size,
+            animation: `starTwinkle ${s.duration} ${s.delay} ease-in-out infinite`,
+          }}
+        />
+      ))}
+
+      {/* Arcade grid overlay */}
+      <div className="fixed inset-0 arcade-grid-bg pointer-events-none z-0" />
+
+      {/* Top Bar */}
+      <header
+        className="fixed top-0 inset-x-0 z-30 h-14 bg-arcade-deep/95 backdrop-blur-sm border-b border-arcade-primary/30 flex items-center justify-between px-4"
+        style={{ paddingTop: 'var(--safe-area-top)' }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">🃏</span>
+          <span className="font-fredoka text-xl text-arcade-primary neon-text-purple">
+            Top Trumps AI
           </span>
+        </div>
+        {playerData && (
+          <PlayerProfile playerData={playerData} onLogout={handleLogout} compact />
+        )}
+      </header>
+
+      {/* Error toast */}
+      {error && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-red-900/90 border-2 border-red-500 text-white px-4 py-3 rounded-xl shadow-xl max-w-sm w-[calc(100%-2rem)] animate-bounce-in">
+          <strong className="font-nunito font-bold">Error: </strong>
+          <span className="font-nunito text-sm">{error}</span>
+          <button className="absolute top-2 right-2 text-white/70 hover:text-white" onClick={() => setError(null)}>✕</button>
         </div>
       )}
 
-      {/* Player Profile */}
-      {playerData && (
-        <PlayerProfile playerData={playerData} onLogout={handleLogout} />
-      )}
+      {/* Main content */}
+      <main className="relative z-10 min-h-[100dvh] pt-14 pb-20 lg:pb-0">
+        <div className="max-w-[1400px] mx-auto px-4 py-4 lg:py-6 lg:grid lg:grid-cols-[420px,1fr] lg:gap-8">
 
-      {/* Mode Toggle */}
-      <div className="flex justify-center gap-2 max-w-7xl mx-auto mb-6">
-        <button
-          onClick={() => setAgentMode(false)}
-          className={`px-5 py-2 rounded-xl font-bold text-sm transition-colors ${
-            !agentMode
-              ? 'bg-orange-500 text-white'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-        >
-          🎛️ Design Mode
-        </button>
-        <button
-          onClick={() => setAgentMode(true)}
-          className={`px-5 py-2 rounded-xl font-bold text-sm transition-colors ${
-            agentMode
-              ? 'bg-purple-600 text-white'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-        >
-          ✨ Agent Mode
-        </button>
-      </div>
+          {/* Left panel — AgentChat (always shown, just hidden on mobile when library tab active) */}
+          <div className="lg:sticky lg:top-20 lg:self-start lg:max-h-[calc(100vh-5rem)] scroll-container">
+            {/* Desktop player profile (above chat on large screens) */}
+            <div className="hidden lg:block mb-4">
+              {playerData && (
+                <PlayerProfile playerData={playerData} onLogout={handleLogout} />
+              )}
+            </div>
 
-      <main className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
-        <div className="lg:order-1">
-          {agentMode ? (
             <AgentChat
               onCardsGenerated={(cards) => setGeneratedCards(prev => [...prev, ...cards])}
               onStyleResolved={(cs, is) => {
@@ -389,61 +182,53 @@ function App() {
                 setSelectedImageStyle(is);
               }}
             />
-          ) : (
-            <ControlPanel
-              cardData={cardData}
-              setCardData={setCardData}
-              selectedTheme={selectedTheme}
-              setSelectedTheme={setSelectedTheme}
-              selectedColorScheme={selectedColorScheme}
-              setSelectedColorScheme={setSelectedColorScheme}
-              selectedImageStyle={selectedImageStyle}
-              setSelectedImageStyle={setSelectedImageStyle}
-              onGeneratePreview={handleGeneratePreview}
-              onGeneratePack={handleGeneratePack}
-              isLoading={isLoading}
-              isPreviewGenerated={!!previewCard}
-              onThemeChange={handleThemeChange}
-              onOpenLibrary={() => setIsCardLibraryOpen(true)}
-            />
-          )}
-        </div>
-        <div className="lg:order-2 flex flex-col items-center justify-start w-full">
-          {agentMode ? (
-            generatedCards.length > 0 ? (
-              <div className="w-full">
-                <h2 className="text-2xl font-bold text-orange-400 mb-4 text-center">Your Generated Cards</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 justify-items-center">
-                  {generatedCards.map((card) => (
-                    <CardPreview key={card.id} cardData={card} colorScheme={selectedColorScheme} />
-                  ))}
-                </div>
-              </div>
+          </div>
+
+          {/* Right panel — generated cards */}
+          <div className="mt-6 lg:mt-0">
+            {generatedCards.length > 0 ? (
+              <GeneratedCardsDisplay
+                cards={generatedCards}
+                colorScheme={selectedColorScheme}
+              />
             ) : (
-              <div className="text-center mt-16 text-gray-500">
-                <p className="text-5xl mb-4">🎴</p>
-                <p className="font-medium">Your cards will appear here</p>
-                <p className="text-sm mt-1">Chat with the agent to get started</p>
+              <div className="flex flex-col items-center justify-center text-center py-16 lg:py-24">
+                <span className="text-7xl mb-6 animate-bounce">🎴</span>
+                <p className="font-fredoka text-2xl text-arcade-primary neon-text-purple mb-2">
+                  Your cards appear here
+                </p>
+                <p className="font-nunito text-arcade-dim text-sm">
+                  Chat with the AI agent to generate your first card pack!
+                </p>
               </div>
-            )
-          ) : (
-            <>
-              <h3 className="text-2xl font-bold text-gray-300 mb-4">Live Preview</h3>
-              <CardPreview cardData={cardData} colorScheme={selectedColorScheme} />
-            </>
-          )}
+            )}
+          </div>
         </div>
       </main>
 
-      {!agentMode && generatedCards.length > 0 && (
-         <section className="max-w-7xl mx-auto">
-            <GeneratedCardsDisplay cards={generatedCards} colorScheme={selectedColorScheme} />
-         </section>
-      )}
-
-       <footer className="text-center text-gray-500 mt-12">
-        <p>Built with Love. <span className="text-gray-600">v1.1.0</span></p>
-      </footer>
+      {/* Bottom Navigation — mobile only */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bottom-nav bg-arcade-deep/95 backdrop-blur-sm border-t border-arcade-primary/30">
+        <div className="grid grid-cols-2 h-16">
+          <button
+            onClick={() => handleTabChange('chat')}
+            className={`flex flex-col items-center justify-center gap-1 transition-colors ${
+              activeTab === 'chat' ? 'text-arcade-primary' : 'text-arcade-dim'
+            }`}
+          >
+            <span className="text-xl">💬</span>
+            <span className="font-nunito text-xs font-bold">Chat</span>
+          </button>
+          <button
+            onClick={() => handleTabChange('library')}
+            className={`flex flex-col items-center justify-center gap-1 transition-colors ${
+              isCardLibraryOpen ? 'text-arcade-primary' : 'text-arcade-dim'
+            }`}
+          >
+            <span className="text-xl">📚</span>
+            <span className="font-nunito text-xs font-bold">My Cards</span>
+          </button>
+        </div>
+      </nav>
 
       {/* Card Library Modal */}
       <CardLibrary
