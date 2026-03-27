@@ -44,3 +44,6 @@ ai-top-trumps-key.json
 # Generated files
 error images/
 dev-storage/
+
+# Git worktrees
+.worktrees/
