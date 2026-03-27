@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   CSS Custom Properties — Arcade Fantasy Design
+   ============================================ */
+:root {
+  --color-bg-deep:   #0a0a1a;
+  --color-bg-card:   #12122a;
+  --color-bg-panel:  #1a1a3a;
+  --color-primary:   #6c63ff;
+  --color-accent:    #ff6b35;
+  --color-gold:      #ffd700;
+  --color-cyan:      #00f5ff;
+  --color-success:   #39ff14;
+  --color-text:      #f0f0ff;
+  --color-text-dim:  #8888aa;
+
+  /* Safe area insets for PWA notch/home indicator */
+  --safe-area-top:    env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left:   env(safe-area-inset-left, 0px);
+  --safe-area-right:  env(safe-area-inset-right, 0px);
+}
+
+/* ============================================
+   Base Reset
+   ============================================ */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background-color: var(--color-bg-deep);
+  color: var(--color-text);
+  min-height: 100%;
+  overscroll-behavior: none;
+}
+
+/* PWA standalone: respect safe area */
+@media all and (display-mode: standalone) {
+  body {
+    padding-top: var(--safe-area-top);
+  }
+}
+
+/* Prevent zoom on input focus (iOS) */
+input, select, textarea {
+  font-size: 16px !important;
+}
+
+/* Touch scroll momentum */
+.scroll-container {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
+}
+
+/* ============================================
+   Font Utilities (preserved from original)
+   ============================================ */
+.font-teko {
+  font-family: 'Teko', sans-serif;
+}
+
+.font-roboto-condensed {
+  font-family: 'Roboto Condensed', sans-serif;
+}
+
+/* ============================================
+   Neon Text Effects
+   ============================================ */
+.neon-text-purple {
+  text-shadow: 0 0 10px #6c63ff, 0 0 20px #6c63ff;
+}
+
+.neon-text-cyan {
+  text-shadow: 0 0 10px #00f5ff, 0 0 20px #00f5ff;
+}
+
+.neon-text-gold {
+  text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700;
+}
+
+/* ============================================
+   Holographic Shimmer
+   ============================================ */
+.holographic-shimmer {
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(255, 215, 0, 0.12) 50%,
+    rgba(0, 245, 255, 0.08) 55%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+  pointer-events: none;
+}
+
+/* ============================================
+   Glow Pulse
+   ============================================ */
+.glow-pulse {
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+/* ============================================
+   Arcade Grid Background
+   ============================================ */
+.arcade-grid-bg {
+  background-image:
+    linear-gradient(rgba(108, 99, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108, 99, 255, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ============================================
+   Card 3D Tilt
+   ============================================ */
+.card-3d-container {
+  perspective: 800px;
+}
+
+.card-3d-inner {
+  transition: transform 0.15s ease-out;
+  transform-style: preserve-3d;
+}
+
+/* ============================================
+   Bottom Nav Safe Area
+   ============================================ */
+.bottom-nav {
+  padding-bottom: max(12px, var(--safe-area-bottom));
+}
