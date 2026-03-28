@@ -1,15 +1,12 @@
 import type { Page } from '@playwright/test';
-import authFixture from '../fixtures/auth.json';
-import statsFixture from '../fixtures/stats.json';
-import cardIdeasFixture from '../fixtures/card-ideas.json';
-import imageFixture from '../fixtures/image.json';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-const agentEventsText = readFileSync(
-  join(process.cwd(), 'e2e/fixtures/agent-events.txt'),
-  'utf-8'
-);
+const authFixture = JSON.parse(readFileSync(join(process.cwd(), 'e2e/fixtures/auth.json'), 'utf-8'));
+const statsFixture = JSON.parse(readFileSync(join(process.cwd(), 'e2e/fixtures/stats.json'), 'utf-8'));
+const cardIdeasFixture = JSON.parse(readFileSync(join(process.cwd(), 'e2e/fixtures/card-ideas.json'), 'utf-8'));
+const imageFixture = JSON.parse(readFileSync(join(process.cwd(), 'e2e/fixtures/image.json'), 'utf-8'));
+const agentEventsText = readFileSync(join(process.cwd(), 'e2e/fixtures/agent-events.txt'), 'utf-8');
 
 export async function setupMocks(page: Page): Promise<void> {
   // Auth login — valid code returns token, anything else returns 401
