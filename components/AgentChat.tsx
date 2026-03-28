@@ -11,6 +11,7 @@ interface ChatMessage {
   role: 'user' | 'agent' | 'question';
   text: string;
   progressItems?: ProgressItem[];
+  isError?: boolean;
   // question-specific fields (role === 'question' only)
   questionKey?: 'colorScheme' | 'imageStyle';
   options?: string[];
@@ -398,6 +399,7 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
           role: 'agent',
           text: `Sorry, I ran into an issue: ${errorText}`,
           progressItems: [],
+          isError: true,
         };
         return updated;
       });
@@ -490,7 +492,7 @@ export default function AgentChat({ onCardsGenerated, onStyleResolved }: AgentCh
           return (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
-                {...(msg.role === 'agent' && msg.text.startsWith('Sorry, I ran into an issue') ? { 'data-testid': 'agent-error' } : {})}
+                {...(msg.isError ? { 'data-testid': 'agent-error' } : {})}
                 className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                 msg.role === 'user'
                   ? 'bg-purple-700 text-white rounded-tr-sm'
