@@ -31,7 +31,7 @@ test('page refresh with valid session stays logged in', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem(
       'player_data',
-      JSON.stringify({ playerCode: 'TIGER34', loginTime: new Date().toISOString() })
+      JSON.stringify({ playerCode: 'TIGER34', createdAt: new Date().toISOString(), lastActive: new Date().toISOString() })
     );
   });
   await page.reload();
@@ -45,7 +45,7 @@ test('logout returns to login screen', async ({ page }) => {
   await page.evaluate(() => {
     localStorage.setItem(
       'player_data',
-      JSON.stringify({ playerCode: 'TIGER34', loginTime: new Date().toISOString() })
+      JSON.stringify({ playerCode: 'TIGER34', createdAt: new Date().toISOString(), lastActive: new Date().toISOString() })
     );
   });
   await page.reload();

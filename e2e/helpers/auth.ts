@@ -19,7 +19,7 @@ export async function skipLoginViaStorage(page: Page): Promise<void> {
   await page.evaluate(() => {
     localStorage.setItem(
       'player_data',
-      JSON.stringify({ playerCode: 'TIGER34', loginTime: new Date().toISOString() })
+      JSON.stringify({ playerCode: 'TIGER34', createdAt: new Date().toISOString(), lastActive: new Date().toISOString() })
     );
   });
   await page.reload();

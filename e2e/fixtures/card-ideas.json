@@ -2,13 +2,13 @@
   {
     "title": "Test Dragon",
     "imagePrompt": "a majestic dragon in a fantasy art style",
-    "stats": {
-      "Speed": 75,
-      "Power": 90,
-      "Strength": 85,
-      "Agility": 70,
-      "Intelligence": 60,
-      "Stamina": 80
-    }
+    "stats": [
+      { "name": "Speed", "value": 75 },
+      { "name": "Power", "value": 90 },
+      { "name": "Strength", "value": 85 },
+      { "name": "Agility", "value": 70 },
+      { "name": "Intelligence", "value": 60 },
+      { "name": "Stamina", "value": 80 }
+    ]
   }
 ]

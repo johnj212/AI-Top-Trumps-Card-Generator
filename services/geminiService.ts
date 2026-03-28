@@ -272,9 +272,20 @@ export async function generateCardIdeas(themeName: string, imageStyle: ImageStyl
             ? concept.statistics
             : {};
 
-        // Only use Object.entries if statsData is a non-null object
+        // Handle both array-of-objects [{ name, value }] and plain-object { name: value } stats forms
         let stats: { name: string, value: number }[] = [];
-        if (statsData && typeof statsData === 'object' && !Array.isArray(statsData)) {
+        if (Array.isArray(statsData)) {
+          stats = statsData
+            .filter((stat: unknown) => stat && typeof stat === 'object' && 'name' in (stat as object))
+            .map((stat: unknown) => {
+              const s = stat as { name: unknown; value: unknown };
+              const numValue = Number(s.value);
+              return {
+                name: String(s.name),
+                value: isNaN(numValue) ? 0 : numValue
+              };
+            });
+        } else if (statsData && typeof statsData === 'object') {
           stats = Object.entries(statsData)
             .filter(([name, value]) => typeof name === 'string' && name.trim() !== '')
             .map(([name, value]) => {
