@@ -103,7 +103,7 @@ function ProgressDisplay({ items }: { items: ProgressItem[] }) {
           return (
             <div key={i} className="flex items-center gap-2 text-sm">
               <span>🎴</span>
-              <span className="text-white font-medium">{item.cardTitle}</span>
+              <span data-testid="progress-item-title" className="text-white font-medium">{item.cardTitle}</span>
               <span className={`font-bold ${rarityClass}`}>({item.rarity})</span>
               {item.total && item.total > 1 && (
                 <span className="text-gray-500 text-xs">{item.index}/{item.total}</span>

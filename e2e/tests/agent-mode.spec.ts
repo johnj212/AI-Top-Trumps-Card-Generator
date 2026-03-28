@@ -22,17 +22,17 @@ test('switching to Agent Mode shows chat UI and hides design controls', async ({
   await expect(page.locator('[data-testid="theme-select"]')).not.toBeVisible();
 });
 
-test('submitting a prompt shows SSE tool progress events in chat', async ({ page }) => {
+test('agent run completes and chat shows card title in progress summary', async ({ page }) => {
   await page.click('[data-testid="agent-mode-btn"]');
   await page.fill('[data-testid="agent-chat-input"]', AGENT_PROMPT);
   await page.click('[data-testid="agent-submit-btn"]');
 
   // The SSE fixture emits a card_complete event. After streaming finishes the
   // agent message bubble is updated with progressItems (including card_complete).
-  // We assert on the persistent card-complete line ("Test Dragon") which is
-  // rendered inside the final agent message bubble — not the transient live
-  // progress overlay that disappears when isGenerating goes false.
-  await expect(page.locator('text=Test Dragon').first()).toBeVisible({ timeout: 10_000 });
+  // We assert on the persistent progress-item-title span rendered inside the
+  // final agent message bubble — not the transient live progress overlay that
+  // disappears when isGenerating goes false.
+  await expect(page.locator('[data-testid="progress-item-title"]')).toBeVisible({ timeout: 10_000 });
 });
 
 test('agent completes and cards appear in grid', async ({ page }) => {
@@ -40,8 +40,11 @@ test('agent completes and cards appear in grid', async ({ page }) => {
   await page.fill('[data-testid="agent-chat-input"]', AGENT_PROMPT);
   await page.click('[data-testid="agent-submit-btn"]');
 
-  // card_complete event in the SSE fixture triggers onCardsGenerated → a
-  // CardPreview element appears on the right-hand side of the layout.
+  // card_complete event in the SSE fixture triggers onCardsGenerated → cards are
+  // appended to generatedCards and rendered as individual CardPreview components
+  // (data-testid="card-preview") inside App.tsx's agent-mode grid. Note: in
+  // design mode the static CardPreview also uses this testid, but that section is
+  // hidden when agentMode=true, so this selector is unambiguous here.
   await expect(page.locator('[data-testid="card-preview"]').first()).toBeVisible({ timeout: 15_000 });
 });
 
@@ -64,14 +67,15 @@ test('visual snapshot: agent-generated card grid is clean with no image overlap'
 });
 
 test('SSE stream error event shows error message in chat', async ({ page }) => {
-  // Override the agent mock to return a properly-formatted SSE error event
+  // Override the agent mock to return a properly-formatted SSE error event.
+  // { times: 1 } ensures this route override doesn't bleed into subsequent tests.
   await page.route('**/api/agent/chat', async (route) => {
     await route.fulfill({
       status: 200,
       headers: { 'Content-Type': 'text/event-stream' },
       body: 'event: error\ndata: {"message":"Something went wrong"}\n\n',
     });
-  });
+  }, { times: 1 });
 
   await page.click('[data-testid="agent-mode-btn"]');
   await page.fill('[data-testid="agent-chat-input"]', AGENT_PROMPT);
