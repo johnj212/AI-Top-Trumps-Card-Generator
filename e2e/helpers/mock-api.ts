@@ -58,7 +58,7 @@ export async function setupMocks(page: Page): Promise<void> {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(cardIdeasFixture),
+          body: JSON.stringify({ kind: 'json', data: cardIdeasFixture }),
         });
       } else {
         await route.fulfill({

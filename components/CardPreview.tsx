@@ -139,14 +139,18 @@ const StatBar: React.FC<{ value: number, color: string }> = ({ value, color }) =
 };
 
 const RarityDisplay: React.FC<{ rarity: Rarity, accentBorderClass: string }> = ({ rarity, accentBorderClass }) => {
-  if (!rarity || rarity === 'Common') return null;
   const rarityConfig = {
     Rare: { text: 'RARE', stars: '★★', textColor: 'text-cyan-400', shadowColor: '#22d3ee' },
     Epic: { text: 'EPIC', stars: '★★★', textColor: 'text-purple-400', shadowColor: '#c084fc' },
     Legendary: { text: 'LEGENDARY', stars: '★★★★', textColor: 'text-yellow-400', shadowColor: '#facc15' },
   };
+
+  if (!rarity || rarity === 'Common') {
+    return <div data-testid="card-rarity-badge" className="absolute top-2 right-2 z-10 px-2 py-0.5 bg-black/70 rounded-md border-2 border-transparent font-roboto-condensed"><span className="text-sm font-bold tracking-widest text-gray-400">COMMON</span></div>;
+  }
+
   const config = rarityConfig[rarity];
-  const textShadow = (rarity === 'Epic' || rarity === 'Legendary') ? 
+  const textShadow = (rarity === 'Epic' || rarity === 'Legendary') ?
     `0 0 5px ${config.shadowColor}, 0 0 8px ${config.shadowColor}` : 'none';
   const style = {
     textShadow: textShadow,

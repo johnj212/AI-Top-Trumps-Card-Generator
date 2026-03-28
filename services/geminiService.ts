@@ -197,6 +197,11 @@ export async function generateCardIdeas(themeName: string, imageStyle: ImageStyl
       return [];
     }
 
+    // Unwrap backend envelope { kind: "json", data: [...] } if present
+    if (rawResult && rawResult.kind === 'json' && rawResult.data !== undefined) {
+      rawResult = rawResult.data;
+    }
+
     let cardConcepts: any[];
     // Normalize the raw result into an array of card concepts
     if (Array.isArray(rawResult)) {
